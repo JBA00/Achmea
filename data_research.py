@@ -20,3 +20,12 @@ for col in erasmus_db.columns:
             ',', '.').astype(float)
     except Exception:
         continue
+
+# Translate the column into lists, so that maybe we can calculate the number of red flags.
+erasmus_db['SF_woord'] = erasmus_db['SF_woord'].str.replace(
+    ' ', '').str.split(',')
+
+
+"""
+erasmus_db.head(60).to_excel("resulting_tables/changed_erasmus2.xlsx")
+"""
