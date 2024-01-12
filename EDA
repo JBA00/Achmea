@@ -211,5 +211,49 @@ labels = ['Underweight', 'Healthy', 'Overweight', 'Obese', 'Severely obese']
 df_result['BMI_group'] = pd.cut(df_result['LG1'], bins=bins, labels=labels, right=False)
 print(df_result.head())
 
+# Plotting
+unique_bmi_groups = ['Healthy', 'Overweight', 'Obese'] 
+num_bmi_groups = len(unique_bmi_groups)
+
+fig, axes = plt.subplots(nrows=1, ncols=num_bmi_groups, figsize=(5 * num_bmi_groups, 5), sharey=True)
+
+for i, bmi_group in enumerate(unique_bmi_groups):
+    subset_df = df_result[df_result['BMI_group'] == bmi_group]
+    status_counts = subset_df['status'].value_counts()
+    
+    for status, color in status_colors.items():
+        count = status_counts.get(status, 0)
+        axes[i].bar(status, count, color=color, label=f'Status: {status}')
+
+    axes[i].set_title(f'BMI Group: {bmi_group}')
+    axes[i].set_xlabel('Status')
+    axes[i].set_ylabel('Count')
+    axes[i].legend()
+
+plt.tight_layout()
+plt.show()
+
+
+# Plotting
+unique_bmi_groups = [ 'Underweight', 'Severely obese']  # Use the predefined labels
+num_bmi_groups = len(unique_bmi_groups)
+
+fig, axes = plt.subplots(nrows=1, ncols=num_bmi_groups, figsize=(5 * num_bmi_groups, 5), sharey=True)
+
+for i, bmi_group in enumerate(unique_bmi_groups):
+    subset_df = df_result[df_result['BMI_group'] == bmi_group]
+    status_counts = subset_df['status'].value_counts()
+    
+    for status, color in status_colors.items():
+        count = status_counts.get(status, 0)
+        axes[i].bar(status, count, color=color, label=f'Status: {status}')
+
+    axes[i].set_title(f'BMI Group: {bmi_group}')
+    axes[i].set_xlabel('Status')
+    axes[i].set_ylabel('Count')
+    axes[i].legend()
+
+plt.tight_layout()
+plt.show()
 
 
