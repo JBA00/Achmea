@@ -90,3 +90,126 @@ df_result['age_group'] = pd.cut(df_result['age'], bins=bins, labels=labels, righ
 # Count the number of each age group
 age_group_counts = df_result['age_group'].value_counts()
 #print(age_group_counts)
+
+plt.figure(figsize=(8, 8))
+
+# Pie chart for age group distribution
+plt.pie(age_group_counts, labels=age_group_counts.index, autopct='%1.1f%%', startangle=90, colors=['lightcoral', 'lightblue', 'lightgreen', 'gold'])
+plt.title('Age Group Distribution')
+
+plt.show()
+
+# Rename status values to risk levels
+
+
+status_mapping = {'S': 'LOW RISK', 'G': 'UNKNOWN RISK', 'A': 'HIGH RISK', 'P': 'HIGH RISK PREMIUM'}
+df_result['risk_level'] = df_result['status'].map(status_mapping)
+#print(df_result.head())
+
+risk_level_counts = df_result['risk_level'].value_counts()
+#print(risk_level_counts)
+
+
+# Plotting
+plt.figure(figsize=(8, 8))
+
+# Pie chart for risk level distribution
+plt.pie(risk_level_counts, labels=risk_level_counts.index, autopct='%1.1f%%', startangle=90, colors=['lightcoral', 'lightblue', 'lightgreen', 'gold'])
+plt.title('Risk Level Distribution')
+
+plt.show()
+
+
+
+
+
+# use rows where SF_woord_count is 0 and 1
+df_result_zero_one = df_result[df_result['SF_woord_count'] < 2]
+
+
+status_colors = {'S': 'lightblue', 'G': 'lightsalmon', 'A': 'lightgreen', 'P': 'lightcoral'}
+
+unique_sf_counts = sorted(df_result_zero_one['SF_woord_count'].unique())
+num_sf_counts = len(unique_sf_counts)
+
+fig, axes = plt.subplots(nrows=1, ncols=num_sf_counts, figsize=(5 * num_sf_counts, 5), sharey=True)
+
+for i, sf_count in enumerate(unique_sf_counts):
+    subset_df = df_result_zero_one[df_result_zero_one['SF_woord_count'] == sf_count]
+    status_counts = subset_df['status'].value_counts()
+    
+    for status, color in status_colors.items():
+        count = status_counts.get(status, 0)
+        axes[i].bar(status, count, color=color, label=f'Status: {status}')
+
+    axes[i].set_title(f'SF_woord_count = {sf_count}')
+    axes[i].set_xlabel('Status')
+    axes[i].set_ylabel('Count')
+    axes[i].legend()
+
+plt.tight_layout()
+plt.show()
+
+
+# Choose rows where SF_woord_count is in the range [2, 4]
+df_result_range_2_4 = df_result[(df_result['SF_woord_count'] >= 2) & (df_result['SF_woord_count'] <= 4)]
+status_colors = {'S': 'lightblue', 'G': 'lightsalmon', 'A': 'lightgreen', 'P': 'lightcoral'}
+
+unique_sf_counts = sorted(df_result_range_2_4['SF_woord_count'].unique())
+num_sf_counts = len(unique_sf_counts)
+
+fig, axes = plt.subplots(nrows=1, ncols=num_sf_counts, figsize=(5 * num_sf_counts, 5), sharey=True)
+
+for i, sf_count in enumerate(unique_sf_counts):
+    subset_df = df_result_range_2_4[df_result_range_2_4['SF_woord_count'] == sf_count]
+    status_counts = subset_df['status'].value_counts()
+    
+    for status, color in status_colors.items():
+        count = status_counts.get(status, 0)
+        axes[i].bar(status, count, color=color, label=f'Status: {status}')
+
+    axes[i].set_title(f'SF_woord_count = {sf_count}')
+    axes[i].set_xlabel('Status')
+    axes[i].set_ylabel('Count')
+    axes[i].legend()
+
+plt.tight_layout()
+plt.show()
+
+
+# Choose rows where SF_woord_count is in the range [5, 7]
+df_result_range_5_7 = df_result[(df_result['SF_woord_count'] >= 5) & (df_result['SF_woord_count'] <= 7)]
+status_colors = {'S': 'lightblue', 'G': 'lightsalmon', 'A': 'lightgreen', 'P': 'lightcoral'}
+
+unique_sf_counts = sorted(df_result_range_5_7['SF_woord_count'].unique())
+num_sf_counts = len(unique_sf_counts)
+
+fig, axes = plt.subplots(nrows=1, ncols=num_sf_counts, figsize=(5 * num_sf_counts, 5), sharey=True)
+
+for i, sf_count in enumerate(unique_sf_counts):
+    subset_df = df_result_range_5_7[df_result_range_5_7['SF_woord_count'] == sf_count]
+    status_counts = subset_df['status'].value_counts()
+    
+    for status, color in status_colors.items():
+        count = status_counts.get(status, 0)
+        axes[i].bar(status, count, color=color, label=f'Status: {status}')
+
+    axes[i].set_title(f'SF_woord_count = {sf_count}')
+    axes[i].set_xlabel('Status')
+    axes[i].set_ylabel('Count')
+    axes[i].legend()
+
+plt.tight_layout()
+plt.show()
+
+
+# Define BMI groups
+bins = [0, 18.5, 25, 30, 40, float('inf')]
+labels = ['Underweight', 'Healthy', 'Overweight', 'Obese', 'Severely obese']
+
+# Create a new column 'BMI_group' based on LG1 values
+df_result['BMI_group'] = pd.cut(df_result['LG1'], bins=bins, labels=labels, right=False)
+print(df_result.head())
+
+
+
