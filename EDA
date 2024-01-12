@@ -43,10 +43,50 @@ def create_df(what_for):
         erasmus_db.drop("id", axis=1)
         erasmus_db.drop("prediction", axis=1)
     if what_for=="eda":
-        erasmus_db= erasmus_db[["vm", "polis_2", "polis_5", "age", "status","LG1", "SF_woord_count"]]
-        
-        
-
-    return erasmus_db
+        erasmus_db= erasmus_db[["vm", "polis_2", "polis_5", "age", "status","LG1", "SF_woord_count"]]    
+     return erasmus_db
 
 
+df_result = create_df("eda")  
+
+import matplotlib.pyplot as plt
+
+#Find the number of men/women
+vm_counts = df_result['vm'].value_counts()
+
+#print(vm_counts)
+
+# Bar Plot for the distribution of men/women
+
+plt.figure(figsize=(10, 5))
+
+# Bar plot for gender distribution
+plt.subplot(1, 2, 1)
+ax = vm_counts.plot(kind='bar', color=['lightblue', 'pink'])
+ax.set_xticklabels(['Men', 'Women'], rotation=0)
+plt.title('Gender Distribution')
+plt.xlabel('Gender')
+plt.ylabel('Count')
+
+# Bar plot for percentage distribution of gender
+plt.subplot(1, 2, 2)
+vm_percentage = vm_counts / vm_counts.sum() * 100
+ax = vm_percentage.plot(kind='bar', color=['lightblue', 'pink'])
+ax.set_xticklabels(['Men', 'Women'], rotation=0)
+plt.title('Percentage Gender Distribution')
+plt.xlabel('Gender')
+plt.ylabel('Percentage')
+
+plt.tight_layout()
+plt.show()
+
+# Create groups for the different ages
+
+bins = [0, 20, 40, 60, float('inf')]
+labels = ['15-20', '21-40', '41-60', '61-70']
+df_result['age_group'] = pd.cut(df_result['age'], bins=bins, labels=labels, right=False)
+#print(df_result.head())
+
+# Count the number of each age group
+age_group_counts = df_result['age_group'].value_counts()
+#print(age_group_counts)
