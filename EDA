@@ -1,0 +1,52 @@
+import pandas as pd
+
+def create_df(what_for):
+    # Create the data frames
+    erasmus_db = pd.read_csv("Erasmus.csv", sep=";")
+    mutation_log_db = pd.read_csv("Mutatielog_id.csv", sep=";")
+    toelichting_db = pd.read_excel("Toelichting.xlsx")
+
+    # Create new columns for date and time
+    mutation_log_db['DatumRegistratie'] = pd.to_datetime(
+        mutation_log_db['DatumRegistratie'])
+
+    mutation_log_db['date_column'] = mutation_log_db['DatumRegistratie'].dt.date
+    mutation_log_db['time_column'] = mutation_log_db['DatumRegistratie'].dt.time
+
+    # Fix float values.
+    for col in erasmus_db.columns:
+        try:
+            erasmus_db[col] = erasmus_db[col].str.replace(
+                ',', '.').astype(float)
+        except Exception:
+            continue
+
+    # Translate the column into lists, so that maybe we can calculate the number of red flags.
+    erasmus_db['SF_woord'] = erasmus_db['SF_woord'].str.replace(' ', '').str.split(',')
+    erasmus_db['SF_woord_count'] = [len(x) if isinstance(x, list) and len(x) > 0 else 0 for x in erasmus_db['SF_woord']]
+    
+    #erasmus_db['SF_woord'] = erasmus_db['SF_woord'].str.replace(
+     #   ' ', '').str.split(',')
+
+    #erasmus_db['SF_woord_count'] = [len(x) if isinstance(
+       # x, list) else None for x in erasmus_db['SF_woord']]
+
+    for col in erasmus_db.filter(regex='^VT_'):
+        try:
+            erasmus_db[col] = erasmus_db[col].replace(
+                999, None).astype(float)
+        except Exception:
+            continue
+
+    if what_for=="random_forest":
+        erasmus_db.drop("SF_woord", axis=1)
+        erasmus_db.drop("id", axis=1)
+        erasmus_db.drop("prediction", axis=1)
+    if what_for=="eda":
+        erasmus_db= erasmus_db[["vm", "polis_2", "polis_5", "age", "status","LG1", "SF_woord_count"]]
+        
+        
+
+    return erasmus_db
+
+
