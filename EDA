@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def create_df(what_for):
     # Create the data frames
@@ -25,12 +26,7 @@ def create_df(what_for):
     erasmus_db['SF_woord'] = erasmus_db['SF_woord'].str.replace(' ', '').str.split(',')
     erasmus_db['SF_woord_count'] = [len(x) if isinstance(x, list) and len(x) > 0 else 0 for x in erasmus_db['SF_woord']]
     
-    #erasmus_db['SF_woord'] = erasmus_db['SF_woord'].str.replace(
-     #   ' ', '').str.split(',')
-
-    #erasmus_db['SF_woord_count'] = [len(x) if isinstance(
-       # x, list) else None for x in erasmus_db['SF_woord']]
-
+    
     for col in erasmus_db.filter(regex='^VT_'):
         try:
             erasmus_db[col] = erasmus_db[col].replace(
@@ -43,21 +39,19 @@ def create_df(what_for):
         erasmus_db.drop("id", axis=1)
         erasmus_db.drop("prediction", axis=1)
     if what_for=="eda":
-        erasmus_db= erasmus_db[["vm", "polis_2", "polis_5", "age", "status","LG1", "SF_woord_count"]]    
-     return erasmus_db
+        erasmus_db= erasmus_db[["vm", "polis_2", "polis_5", "age", "status","LG1", "SF_woord_count"]]
+        
+     
+    return erasmus_db
 
+# Code for EDA
 
 df_result = create_df("eda")  
-
-import matplotlib.pyplot as plt
 
 #Find the number of men/women
 vm_counts = df_result['vm'].value_counts()
 
-#print(vm_counts)
-
-# Bar Plot for the distribution of men/women
-
+#Bar Plot for the distribution of men/women
 plt.figure(figsize=(10, 5))
 
 # Bar plot for gender distribution
@@ -80,55 +74,39 @@ plt.ylabel('Percentage')
 plt.tight_layout()
 plt.show()
 
-# Create groups for the different ages
 
+# Create groups for the different ages
 bins = [0, 20, 40, 60, float('inf')]
 labels = ['15-20', '21-40', '41-60', '61-70']
 df_result['age_group'] = pd.cut(df_result['age'], bins=bins, labels=labels, right=False)
-#print(df_result.head())
 
 # Count the number of each age group
 age_group_counts = df_result['age_group'].value_counts()
-#print(age_group_counts)
 
+# Create Pie chart for age group distribution
 plt.figure(figsize=(8, 8))
-
-# Pie chart for age group distribution
 plt.pie(age_group_counts, labels=age_group_counts.index, autopct='%1.1f%%', startangle=90, colors=['lightcoral', 'lightblue', 'lightgreen', 'gold'])
 plt.title('Age Group Distribution')
-
 plt.show()
+
 
 # Rename status values to risk levels
-
-
 status_mapping = {'S': 'LOW RISK', 'G': 'UNKNOWN RISK', 'A': 'HIGH RISK', 'P': 'HIGH RISK PREMIUM'}
 df_result['risk_level'] = df_result['status'].map(status_mapping)
-#print(df_result.head())
-
 risk_level_counts = df_result['risk_level'].value_counts()
-#print(risk_level_counts)
 
-
-# Plotting
+# Create pie chart for Risk distibution
 plt.figure(figsize=(8, 8))
-
-# Pie chart for risk level distribution
 plt.pie(risk_level_counts, labels=risk_level_counts.index, autopct='%1.1f%%', startangle=90, colors=['lightcoral', 'lightblue', 'lightgreen', 'gold'])
 plt.title('Risk Level Distribution')
-
 plt.show()
 
 
-
-
+#Bar plots for SF_woord_count per Status
+status_colors = {'S': 'lightblue', 'G': 'lightsalmon', 'A': 'lightgreen', 'P': 'lightcoral'}
 
 # use rows where SF_woord_count is 0 and 1
 df_result_zero_one = df_result[df_result['SF_woord_count'] < 2]
-
-
-status_colors = {'S': 'lightblue', 'G': 'lightsalmon', 'A': 'lightgreen', 'P': 'lightcoral'}
-
 unique_sf_counts = sorted(df_result_zero_one['SF_woord_count'].unique())
 num_sf_counts = len(unique_sf_counts)
 
@@ -153,8 +131,6 @@ plt.show()
 
 # Choose rows where SF_woord_count is in the range [2, 4]
 df_result_range_2_4 = df_result[(df_result['SF_woord_count'] >= 2) & (df_result['SF_woord_count'] <= 4)]
-status_colors = {'S': 'lightblue', 'G': 'lightsalmon', 'A': 'lightgreen', 'P': 'lightcoral'}
-
 unique_sf_counts = sorted(df_result_range_2_4['SF_woord_count'].unique())
 num_sf_counts = len(unique_sf_counts)
 
@@ -179,8 +155,6 @@ plt.show()
 
 # Choose rows where SF_woord_count is in the range [5, 7]
 df_result_range_5_7 = df_result[(df_result['SF_woord_count'] >= 5) & (df_result['SF_woord_count'] <= 7)]
-status_colors = {'S': 'lightblue', 'G': 'lightsalmon', 'A': 'lightgreen', 'P': 'lightcoral'}
-
 unique_sf_counts = sorted(df_result_range_5_7['SF_woord_count'].unique())
 num_sf_counts = len(unique_sf_counts)
 
@@ -203,15 +177,15 @@ plt.tight_layout()
 plt.show()
 
 
+
 # Define BMI groups
 bins = [0, 18.5, 25, 30, 40, float('inf')]
 labels = ['Underweight', 'Healthy', 'Overweight', 'Obese', 'Severely obese']
 
 # Create a new column 'BMI_group' based on LG1 values
 df_result['BMI_group'] = pd.cut(df_result['LG1'], bins=bins, labels=labels, right=False)
-print(df_result.head())
 
-# Plotting
+#Bar plots for 'Healthy', 'Overweight', 'Obese' per status
 unique_bmi_groups = ['Healthy', 'Overweight', 'Obese'] 
 num_bmi_groups = len(unique_bmi_groups)
 
@@ -233,8 +207,7 @@ for i, bmi_group in enumerate(unique_bmi_groups):
 plt.tight_layout()
 plt.show()
 
-
-# Plotting
+#Bar plots for 'Underweight', 'Severely obese' per status
 unique_bmi_groups = [ 'Underweight', 'Severely obese']  # Use the predefined labels
 num_bmi_groups = len(unique_bmi_groups)
 
@@ -257,3 +230,72 @@ plt.tight_layout()
 plt.show()
 
 
+# Histogram for the Insured Amounts
+fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
+
+hist, edges, _ = axes.hist(df_result['polis_2'], bins=20, color='skyblue', edgecolor='black', density=False)
+axes.set_title('Distribution of Insured Amounts')
+axes.set_xlabel('Insured Amount')
+axes.set_ylabel('Frequency')
+
+bin_centers = 0.5 * (edges[:-1] + edges[1:])
+axes.set_xticks(bin_centers)
+axes.set_xticklabels([f'{int(val)}' for val in bin_centers], rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
+
+
+# Histograms for Insured amounts per status
+unique_statuses = df_result['status'].unique()
+
+fig, axes = plt.subplots(nrows=len(unique_statuses), ncols=1, figsize=(8, 5 * len(unique_statuses)))
+
+for i, status in enumerate(unique_statuses):
+    subset_df = df_result[df_result['status'] == status]
+    axes[i].hist(subset_df['polis_2'], bins=20, color=status_colors.get(status, 'skyblue'), edgecolor='black')
+    axes[i].set_title(f'Distribution of Insured Amounts for Status {status}')
+    axes[i].set_xlabel('Insured Amount')
+    axes[i].set_ylabel('Frequency')
+
+    bin_centers = 0.5 * (edges[:-1] + edges[1:])
+    axes[i].set_xticks(bin_centers)
+    axes[i].set_xticklabels([f'{int(val)}' for val in bin_centers], rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
+
+
+# Histogram for the Years of Insurance
+fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
+
+hist, edges, _ = axes.hist(df_result['polis_5'], bins=20, color='skyblue', edgecolor='black', density=False)
+axes.set_title('Distribution of Years of Insurance')
+axes.set_xlabel('Years of Insurance')
+axes.set_ylabel('Frequency')
+
+bin_centers = 0.5 * (edges[:-1] + edges[1:])
+axes.set_xticks(bin_centers)
+axes.set_xticklabels([f'{int(val)}' for val in bin_centers], rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
+
+
+# Histograms for Years of Insurance per status
+fig, axes = plt.subplots(nrows=len(unique_statuses), ncols=1, figsize=(8, 5 * len(unique_statuses)))
+
+for i, status in enumerate(unique_statuses):
+    subset_df = df_result[df_result['status'] == status]
+    axes[i].hist(subset_df['polis_5'], bins=20, color=status_colors.get(status, 'skyblue'), edgecolor='black')
+    axes[i].set_title(f'Distribution of Years of Insurance for Status: {status}')
+    axes[i].set_xlabel('Years of Insurance')
+    axes[i].set_ylabel('Frequency')
+
+    # Set x-axis tick labels to display actual numbers
+    bin_centers = 0.5 * (edges[:-1] + edges[1:])
+    axes[i].set_xticks(bin_centers)
+    axes[i].set_xticklabels([f'{int(val)}' for val in bin_centers], rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
