@@ -20,7 +20,7 @@ X = erasmus_db.drop("status", axis=1).values
 y = erasmus_db.status.values
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.25, random_state=42)
+    X, y, test_size=0.25, random_state=random_state)
 
 param_grid = {
     # Tune max_features from 1 to 200 for the RandomForestClassifier
@@ -34,7 +34,7 @@ scoring = {
     'f1': make_scorer(f1_score, average='weighted')
 }
 
-cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=random_state)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
 
 rf_classifier = RandomForestClassifier(
     n_estimators=1000, random_state=random_state)
