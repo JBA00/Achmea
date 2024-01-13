@@ -1,7 +1,9 @@
 import pandas as pd
 
+# pass as parameter what it is for
 
-def create_df(random_forest=True):
+
+def create_df(what_for="random_forest"):
     # Create the data frames
     erasmus_db = pd.read_csv("data/Erasmus.csv", sep=";")
     mutation_log_db = pd.read_csv("data/Mutatielog_id.csv", sep=";")
@@ -11,8 +13,8 @@ def create_df(random_forest=True):
     mutation_log_db['DatumRegistratie'] = pd.to_datetime(
         mutation_log_db['DatumRegistratie'])
 
-    mutation_log_db['date_column'] = mutation_log_db['DatumRegistratie'].dt.date
-    mutation_log_db['time_column'] = mutation_log_db['DatumRegistratie'].dt.time
+    mutation_log_db['date'] = mutation_log_db['DatumRegistratie'].dt.date
+    mutation_log_db['time'] = mutation_log_db['DatumRegistratie'].dt.time
 
     # Fix float values.
     for col in erasmus_db.columns:
@@ -29,17 +31,34 @@ def create_df(random_forest=True):
     erasmus_db['SF_woord_count'] = [len(x) if isinstance(
         x, list) else None for x in erasmus_db['SF_woord']]
 
-    for col in erasmus_db.filter(regex='^VT_'):
-        try:
-            erasmus_db[col] = erasmus_db[col].replace(
-                999, None).astype(float)
-        except Exception:
-            continue
+    if what_for == "random_forest":
+        erasmus_db = erasmus_db.drop("SF_woord", axis=1).drop(
+            "id", axis=1).drop("prediction", axis=1)
 
-    if random_forest:
-        erasmus_db.drop("SF_woord", axis=1)
-        erasmus_db.drop("id", axis=1)
-        erasmus_db.drop("prediction", axis=1)
+    erasmus_db["SF_woord_count"].fillna(0, inplace=True)
+
+    # Here are some assumptions about are made, to replace null values- probs better to discuss.
+    erasmus_db["woord_74"].fillna(0, inplace=True)
+    erasmus_db["woord_121"].fillna(0, inplace=True)
+
+    erasmus_db["D_LG4_1j"].fillna(0, inplace=True)
+    erasmus_db["D_cat_1g"].fillna(0, inplace=True)
+    erasmus_db["D_cat_4b"].fillna(0, inplace=True)
+
+    erasmus_db["VT_cat_1b"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_1d"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_1g"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_2c"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_4b"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_5e"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_8a"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_9a"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_10b"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_10g.2"].fillna(999, inplace=True)
+
+    if what_for == "eda":
+        erasmus_db = erasmus_db[["vm", "polis_2", "polis_5",
+                                 "age", "status", "LG1", "SF_woord_count"]]
 
     return erasmus_db
 
