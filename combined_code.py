@@ -9,18 +9,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from imblearn.pipeline import Pipeline as ImbPipeline
-from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 import pandas as pd
 from data_research import create_df
 import matplotlib.pyplot as plt
 import joblib
 import numpy as np
-
-erasmus_db = create_df()
-
-# Move it later to data_research
-erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
 
 
 class InsuranceClassifier:
@@ -45,6 +39,10 @@ class InsuranceClassifier:
 
     def _prepare_variables(self):
 
+        self.prev_predictions = self.erasmus_db["old_predictions"]
+        self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
+        self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
+            "old_predictions", axis=1)
         factor = pd.factorize(self.erasmus_db_for_training[self.target_col])
         self.erasmus_db_for_training[self.target_col] = factor[0]
         self.definitions = factor[1]
@@ -131,17 +129,20 @@ class InsuranceClassifier:
 
     def get_tuning_graph(self):
         results = self.grid_search.cv_results_
-        max_features_values = self.param_grid['classifier__max_features']
+        if self.type_of_classifier == "Random Forest":
+            features = self.param_grid['classifier__max_features']
+        else:
+            features = self.param_grid['classifier__C']
 
         # Plotting the metrics for different max_features values
         plt.figure(figsize=(10, 6))
 
         # Plot precision
-        plt.plot(max_features_values,
+        plt.plot(features,
                  results['mean_test_precision'], label='Precision', marker='o')
 
         # Plot recall
-        plt.plot(max_features_values,
+        plt.plot(features,
                  results['mean_test_recall'], label='Recall', marker='o')
 
         plt.title('Model Metrics for Different max_features Values')
@@ -200,23 +201,61 @@ class InsuranceClassifier:
         plt.show()
 
     def get_missing_amounts(self):
+
+        # TODO: BIA FIX!!!!!!pls
         missed_amount = len(self.g_data["predictions_defactor"][self.g_data["predictions_defactor"] == "A"]) * 15000 + len(self.g_data["predictions_defactor"]
                                                                                                                            [self.g_data["predictions_defactor"] == "P"]) * 1500 - len(self.g_data["predictions_defactor"][self.g_data["predictions_defactor"] == "S"]) * 100
         print(missed_amount)
+
+    def compare_with_high_low_predictions(self):
+        comparison_table = self.erasmus_db[["status", "predictions_defactor"]]
+        comparison_table["old_predictions"] = self.prev_predictions
+
+        comparison_table["old_predictions_defactor"] = np.where(
+            comparison_table["old_predictions"] >= 0.5, 1, 0)
+        comparison_table["new_predictions"] = np.where(
+            comparison_table["predictions_defactor"] == "S", 0, 1)
+        comparison_table["actual_status"] = np.where(
+            comparison_table["status"] == "S", 0, 1)
+
+        old_recall = recall_score(
+            comparison_table["actual_status"], comparison_table["old_predictions_defactor"])
+        new_recall = recall_score(
+            comparison_table["actual_status"], comparison_table["new_predictions"])
+
+        print(
+            f"The recall from old predictions - {old_recall}. New recall value - {new_recall}")
 
     def save_the_model(self):
         joblib.dump(self.best_model, 'best_model.joblib')
 
 
-rf_grid = {'classifier__max_features': list(range(1, 100, 6))}
-lasso_grid = {'classifier__C':  np.arange(0.001, 0.105, 0.005)}
+erasmus_db = create_df()
+
+# Move it later to data_research
+erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
+model = {"Random Forest": {
+    'classifier__max_features': list(range(1, 100, 6))},
+    "Lasso":
+    {'classifier__C':  np.arange(0.001, 0.105, 0.005)}}
+
 
 my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training,
-                            rf_grid)
-
-
+                            model["Random Forest"])
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
 my_rf.get_misclassified_g_status()
 my_rf.get_missing_amounts()
+my_rf.compare_with_high_low_predictions()
+
+my_lasso = InsuranceClassifier("Lasso", erasmus_db, erasmus_db_for_training,
+                               model["Lasso"])
+
+
+my_lasso.get_report()
+my_lasso.get_tuning_graph()
+my_lasso.get_feature_importance_graph()
+my_lasso.get_misclassified_g_status()
+my_lasso.get_missing_amounts()
+my_lasso.compare_with_high_low_predictions()
