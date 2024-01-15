@@ -1,0 +1,123 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import KMeans
+
+def create_df(what_for="clustering"):
+    # Create the data frames
+    erasmus_db = pd.read_csv("Erasmus.csv", sep=";")
+    mutation_log_db = pd.read_csv("Mutatielog_id.csv", sep=";")
+    toelichting_db = pd.read_excel("Toelichting.xlsx")
+
+    # Create new columns for date and time
+    mutation_log_db['DatumRegistratie'] = pd.to_datetime(
+        mutation_log_db['DatumRegistratie'])
+
+    mutation_log_db['date'] = mutation_log_db['DatumRegistratie'].dt.date
+    mutation_log_db['time'] = mutation_log_db['DatumRegistratie'].dt.time
+
+    # Fix float values.
+    for col in erasmus_db.columns:
+        try:
+            erasmus_db[col] = erasmus_db[col].str.replace(
+                ',', '.').astype(float)
+        except Exception:
+            continue
+
+    # Translate the column into lists, so that maybe we can calculate the number of red flags.
+    erasmus_db['SF_woord'] = erasmus_db['SF_woord'].str.replace(
+        ' ', '').str.split(',')
+
+    erasmus_db['SF_woord_count'] = [len(x) if isinstance(
+        x, list) else None for x in erasmus_db['SF_woord']]
+
+    if what_for == "random_forest":
+        erasmus_db = erasmus_db.drop("SF_woord", axis=1).drop(
+            "id", axis=1).drop("prediction", axis=1)
+
+    erasmus_db["SF_woord_count"].fillna(0, inplace=True)
+
+    # Here are some assumptions about are made, to replace null values- probs better to discuss.
+    erasmus_db["woord_74"].fillna(0, inplace=True)
+    erasmus_db["woord_121"].fillna(0, inplace=True)
+
+    erasmus_db["D_LG4_1j"].fillna(0, inplace=True)
+    erasmus_db["D_cat_1g"].fillna(0, inplace=True)
+    erasmus_db["D_cat_4b"].fillna(0, inplace=True)
+
+    erasmus_db["VT_cat_1b"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_1d"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_1g"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_2c"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_4b"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_5e"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_8a"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_9a"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_10b"].fillna(999, inplace=True)
+    erasmus_db["VT_cat_10g.2"].fillna(999, inplace=True)
+
+    if what_for == "eda":
+        erasmus_db = erasmus_db[["vm", "polis_2", "polis_5",
+                                 "age", "status", "LG1", "SF_woord_count"]]
+    if what_for=="clustering":
+        erasmus_db = erasmus_db.drop(["SF_woord", "id", "prediction"], axis=1)    
+
+    return erasmus_db
+
+
+#clustering
+df_clustering = create_df("clustering")
+print(df_clustering)
+
+
+
+# Create dummy variables for status
+df_clustering = pd.get_dummies(df_clustering, columns=['status'])
+print(df_clustering.head())
+
+#find numerical , categorical and boolean features 
+numerical_features = df_clustering.select_dtypes(include=['int64', 'float64']).columns
+categorical_features = df_clustering.select_dtypes(include=['object']).columns
+boolean_features = df_clustering.select_dtypes(include=['bool']).columns
+
+
+# Turn Boolean features to binary
+def binary_transform(value, desired_value=True):
+    return 1 if value == desired_value else 0
+
+df_clustering[boolean_features] = df_clustering[boolean_features].applymap(binary_transform)
+print(df_clustering)
+
+# Exclude vm and sf from numerical features 
+features_to_exclude = ['vm', 'SF']
+numerical_features = numerical_features.difference(features_to_exclude)
+
+# Normalize numerical features
+scaler = MinMaxScaler()
+df_clustering[numerical_features] = scaler.fit_transform(df_clustering[numerical_features])
+
+
+# Cluster and find centroids for all features
+num_clusters = 3
+kmeans = KMeans(n_clusters=num_clusters, random_state=1234)
+df_clustering['cluster_label'] = kmeans.fit_predict(df_clustering)
+
+centroids = kmeans.cluster_centers_
+centroids_df = pd.DataFrame(centroids, columns=df_clustering.columns)  
+print(centroids_df)
+
+
+# List of specific interpertable features per cluster
+specific_features = ['vm', 'polis_2', 'polis_5','age', 'SF', 'SF_woord_count','status_A', 'status_G', 'status_P','status_S']
+
+for cluster_label in range(num_clusters):
+    print(f"\nCluster {cluster_label + 1} Feature Values:")
+    for feature in specific_features:
+        # Get the value of the specific feature for the current cluster
+        feature_value = centroids_df.loc[cluster_label, feature]
+        print(f"- {feature}: {feature_value}")
+
+
