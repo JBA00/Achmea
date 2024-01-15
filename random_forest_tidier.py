@@ -15,154 +15,190 @@ from data_research import create_df
 import matplotlib.pyplot as plt
 import joblib
 
-
-random_state = 1810
 erasmus_db = create_df()
 
 # Move it later to data_research
 erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
 
-factor = pd.factorize(erasmus_db_for_training['status'])
-erasmus_db.status = factor[0]
-definitions = factor[1]
 
-X = erasmus_db_for_training.drop("status", axis=1)
-y = erasmus_db_for_training["status"]
+class RandomForestPreparation:
+    def __init__(self, full_data, trainable_data, name_of_target_column, grid_range_for_mtry, random_state):
+        self.erasmus_db = full_data
+        self.erasmus_db_for_training = trainable_data
+        self.target_col = name_of_target_column
+        self.grid_range = grid_range_for_mtry
+        self.random_state = random_state
+        self._initialization()
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.25, random_state=random_state)
+    def _initialization(self):
+        self._prepare_variables()
+        self._preprocess_data()
+        self._cv_creation()
+        self._classify_random_forest()
+        self._find_best()
 
-numeric_features = X.select_dtypes(
-    include=['int64', 'float64']).columns.tolist()
+    def _prepare_variables(self):
 
-categorical_features = X.select_dtypes(
-    include=['object', 'string']).columns.tolist()
+        factor = pd.factorize(self.erasmus_db_for_training[self.target_col])
+        self.erasmus_db_for_training[self.target_col] = factor[0]
+        self.definitions = factor[1]
 
-boolean_features = X.select_dtypes(
-    include=['bool']).columns.tolist()
+        self.X = self.erasmus_db_for_training.drop(self.target_col, axis=1)
+        self.y = self.erasmus_db_for_training[self.target_col]
 
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', Pipeline(steps=[('imputer', SimpleImputer(
-            strategy='mean')), ('scaler', StandardScaler())]), numeric_features),
-        ('cat', Pipeline(steps=[('imputer', SimpleImputer(strategy='most_frequent')), (
-            'onehot', OneHotEncoder(drop='first'))]), categorical_features),
-        # Placeholder step for boolean features
-        ('bool', Pipeline(
-            steps=[('placeholder', 'passthrough')]), boolean_features),
-    ],
-    remainder='passthrough'  # Include the rest of the columns as they are
-)
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+            self.X, self.y, test_size=0.25, random_state=self.random_state)
 
-param_grid = {
-    # Tune max_features from 1 to 200 for the RandomForestClassifier
-    'classifier__max_features': list(range(1, 100, 4)),
-}
+    def _preprocess_data(self):
+        self.numeric_features = self.X.select_dtypes(
+            include=['int64', 'float64']).columns.tolist()
 
-scoring = {
-    'accuracy': make_scorer(accuracy_score),
-    'precision': make_scorer(precision_score, average='weighted'),
-    'recall': make_scorer(recall_score, average='weighted'),
-    'f1': make_scorer(f1_score, average='weighted')
-}
+        self.categorical_features = self.X.select_dtypes(
+            include=['object', 'string']).columns.tolist()
 
-cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=random_state)
+        self.boolean_features = self.X.select_dtypes(
+            include=['bool']).columns.tolist()
 
-rf_classifier = RandomForestClassifier(
-    n_estimators=400, random_state=random_state)
+        self.preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', Pipeline(steps=[('imputer', SimpleImputer(
+                    strategy='mean')), ('scaler', StandardScaler())]), self.numeric_features),
+                ('cat', Pipeline(steps=[('imputer', SimpleImputer(strategy='most_frequent')), (
+                    'onehot', OneHotEncoder(drop='first'))]), self.categorical_features),
+                # Placeholder step for boolean features
+                ('bool', Pipeline(
+                    steps=[('placeholder', 'passthrough')]), self.boolean_features),
+            ],
+            remainder='passthrough'  # Include the rest of the columns as they are
+        )
 
-model_pipeline = ImbPipeline([
-    ('preprocessor', preprocessor),
-    # Adjust parameters as needed
-    ('undersample', RandomUnderSampler(sampling_strategy='auto',
-     random_state=random_state)),  # Adjust parameters as needed,
-    # This will be replaced with the actual classifier during hyperparameter tuning
-    ('classifier', rf_classifier)
-])
+    def _cv_creation(self):
 
-grid_search = GridSearchCV(estimator=model_pipeline, param_grid=param_grid,
-                           scoring=scoring, cv=cv, refit='recall', verbose=2, n_jobs=-1)
+        self.param_grid = {
+            # Tune max_features from 1 to 200 for the RandomForestClassifier
+            'classifier__max_features': self.grid_range,
+        }
+        self.cv = StratifiedKFold(
+            n_splits=10, shuffle=True, random_state=self.random_state)
 
-grid_search.fit(X_train, y_train)
+    def _classify_random_forest(self):
+        self.scoring = {
+            'accuracy': make_scorer(accuracy_score),
+            'precision': make_scorer(precision_score, average='weighted'),
+            'recall': make_scorer(recall_score, average='weighted'),
+            'f1': make_scorer(f1_score, average='weighted')
+        }
 
-print("Best Hyperparameters:", grid_search.best_params_)
+        self.rf_classifier = RandomForestClassifier(
+            n_estimators=400, random_state=self.random_state)
 
-# Make predictions on the test set using the best model
-best_model = grid_search.best_estimator_
-joblib.dump(best_model, 'best_model.joblib')
-predictions = best_model.predict(X_test)
+        self.model_pipeline = ImbPipeline([
+            ('preprocessor', self.preprocessor),
+            # Adjust parameters as needed
+            ('undersample', RandomUnderSampler(sampling_strategy='auto',
+                                               random_state=self.random_state)),  # Adjust parameters as needed,
+            # This will be replaced with the actual classifier during hyperparameter tuning
+            ('classifier', self.rf_classifier)
+        ])
 
-# Evaluate the model performance on the test set
-accuracy = accuracy_score(y_test, predictions)
-print(f"Accuracy: {accuracy}")
+        self.grid_search = GridSearchCV(estimator=self.model_pipeline, param_grid=self.param_grid,
+                                        scoring=self.scoring, cv=self.cv, refit='recall', verbose=2, n_jobs=-1)
 
-report = classification_report(y_test, predictions)
-print("Classification Report:\n", report)
+    def _find_best(self):
 
-# Predictions including G category
+        self.grid_search.fit(self.X_train, self.y_train)
+        self.best_model = self.grid_search.best_estimator_
+        self.predictions = self.best_model.predict(self.X_test)
+        self.predictions_full = self.best_model.predict(
+            self.erasmus_db.drop("status", axis=1))
+        self.erasmus_db["predictions"] = self.predictions_full
+        defactorized_column = pd.Categorical.from_codes(
+            self.erasmus_db['predictions'], self.definitions)
+        self.erasmus_db['predictions_defactor'] = defactorized_column
 
-predictions_full = best_model.predict(erasmus_db.drop("status", axis=1))
-erasmus_db["predictions"] = predictions_full
-# Create the plots
+    def get_report(self):
+        report = classification_report(self.y_test, self.predictions)
+        print("Classification Report:\n", report)
 
-results = grid_search.cv_results_
-max_features_values = param_grid['classifier__max_features']
+    def get_tuning_graph(self):
+        results = self.grid_search.cv_results_
+        max_features_values = self.param_grid['classifier__max_features']
 
-# Plotting the metrics for different max_features values
-plt.figure(figsize=(10, 6))
+        # Plotting the metrics for different max_features values
+        plt.figure(figsize=(10, 6))
 
-# Plot accuracy
+        # Plot precision
+        plt.plot(max_features_values,
+                 results['mean_test_precision'], label='Precision', marker='o')
+
+        # Plot recall
+        plt.plot(max_features_values,
+                 results['mean_test_recall'], label='Recall', marker='o')
+
+        plt.title('Model Metrics for Different max_features Values')
+        plt.xlabel('max_features')
+        plt.ylabel('Score')
+        plt.legend()
+        plt.grid(True)
+
+        plt.show()
+
+    def get_feature_importance_graph(self):
+        self.best_model.fit(self.X, self.y)
+
+        # Access feature importances
+        feature_importances = self.best_model.named_steps['classifier'].feature_importances_
+
+        # Get feature names from the preprocessor
+        numeric_features_preprocessed = self.best_model.named_steps['preprocessor'].transformers_[
+            0][2]
+
+        boolean_features_preprocessed = self.best_model.named_steps['preprocessor'].transformers_[
+            2][2]
+
+        all_features = numeric_features_preprocessed + boolean_features_preprocessed
+        # Create a DataFrame for better visualization
+        feature_importance_df = pd.DataFrame(
+            {'Feature': all_features, 'Importance': feature_importances})
+
+        # Sort by importance in descending order
+        feature_importance_df = feature_importance_df.sort_values(
+            by='Importance', ascending=False)
+
+        # Plot the top 10 features
+        plt.figure(figsize=(10, 6))
+        plt.barh(feature_importance_df['Feature'][:10],
+                 feature_importance_df['Importance'][:10])
+        plt.xlabel('Feature Importance')
+        plt.title('Top 10 Feature Importances')
+        plt.show()
+
+    def get_misclassified_g_status(self):
+        self.g_data = self.erasmus_db[self.erasmus_db[self.target_col] == "G"][[
+            self.target_col, "predictions_defactor"]]
+
+        plt.figure(figsize=(10, 6))
+        self.g_data["predictions_defactor"].value_counts().plot(
+            kind='bar', color='skyblue')
+        plt.title('Value Counts of predictions_defactor')
+        plt.xlabel('Categories')
+        plt.ylabel('Count')
+        plt.show()
+
+    def get_missing_amounts(self):
+        missed_amount = len(self.g_data["predictions_defactor"][self.g_data["predictions_defactor"] == "A"]) * 15000 + len(self.g_data["predictions_defactor"]
+                                                                                                                           [self.g_data["predictions_defactor"] == "P"]) * 1500 - len(self.g_data["predictions_defactor"][self.g_data["predictions_defactor"] == "S"]) * 100
+        print(missed_amount)
+
+    def save_the_model(self):
+        joblib.dump(self.best_model, 'best_model.joblib')
 
 
-# Plot precision
-plt.plot(max_features_values,
-         results['mean_test_precision'], label='Precision', marker='o')
+my_rf = RandomForestPreparation(erasmus_db, erasmus_db_for_training,
+                                "status", list(range(1, 100, 6)), 1810)
 
-# Plot recall
-plt.plot(max_features_values,
-         results['mean_test_recall'], label='Recall', marker='o')
-plt.plot(max_features_values,
-         results['mean_test_accuracy'], label='Accuracy', marker='o')
-# Plot F1 score
-plt.plot(max_features_values,
-         results['mean_test_f1'], label='F1 Score', marker='o')
-
-plt.title('Model Metrics for Different max_features Values')
-plt.xlabel('max_features')
-plt.ylabel('Score')
-plt.legend()
-plt.grid(True)
-
-plt.show()
-
-# Importance of variables
-# Fit the best model on the entire training data
-best_model.fit(X, y)
-
-# Access feature importances
-feature_importances = best_model.named_steps['classifier'].feature_importances_
-
-# Get feature names from the preprocessor
-numeric_features_preprocessed = best_model.named_steps['preprocessor'].transformers_[
-    0][2]
-
-
-boolean_features_preprocessed = best_model.named_steps['preprocessor'].transformers_[
-    2][2]
-
-all_features = numeric_features + boolean_features_preprocessed
-# Create a DataFrame for better visualization
-feature_importance_df = pd.DataFrame(
-    {'Feature': all_features, 'Importance': feature_importances})
-
-# Sort by importance in descending order
-feature_importance_df = feature_importance_df.sort_values(
-    by='Importance', ascending=False)
-
-# Plot the top 10 features
-plt.figure(figsize=(10, 6))
-plt.barh(feature_importance_df['Feature'][:10],
-         feature_importance_df['Importance'][:10])
-plt.xlabel('Feature Importance')
-plt.title('Top 10 Feature Importances')
-plt.show()
+my_rf.get_report()
+my_rf.get_tuning_graph()
+my_rf.get_feature_importance_graph()
+my_rf.get_misclassified_g_status()
+my_rf.get_missing_amounts()
