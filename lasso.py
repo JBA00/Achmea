@@ -76,7 +76,7 @@ scoring = {
 
 cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=random_state)
 
-lasso = LogisticRegression(multi_class='multinomial', penalty='l1', solver='saga')
+lasso = LogisticRegression(multi_class='ovr', penalty='l1', solver='saga')
 
 
 model_pipeline = ImbPipeline([
@@ -149,8 +149,10 @@ best_model.fit(X, y)
 
 
 # all the things about feature importance i still need to see how to do for lasso
-# Access feature importances
-feature_importances = best_model.named_steps['classifier'].feature_importances_
+# Get coefficients
+coefficients = best_model.named_steps['classifier'].coef_
+abs_coef= np.abs(coefficients)
+avg_abs_coef= np.mean(abs_coef, axis=0)
 
 # Get feature names from the preprocessor
 numeric_features_preprocessed = best_model.named_steps['preprocessor'].transformers_[
@@ -161,11 +163,11 @@ boolean_features_preprocessed = best_model.named_steps['preprocessor'].transform
     2][2]
 
 all_features = numeric_features + boolean_features_preprocessed
-# Create a DataFrame for better visualization
-feature_importance_df = pd.DataFrame(
-    {'Feature': all_features, 'Importance': feature_importances})
 
-# Sort by importance in descending order
+
+feature_importance_df = pd.DataFrame(
+    {'Feature': all_features, 'Importance': avg_abs_coef})
+
 feature_importance_df = feature_importance_df.sort_values(
     by='Importance', ascending=False)
 
@@ -176,6 +178,3 @@ plt.barh(feature_importance_df['Feature'][:10],
 plt.xlabel('Feature Importance')
 plt.title('Top 10 Feature Importances')
 plt.show()
-
-
-
