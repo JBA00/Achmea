@@ -106,11 +106,11 @@ kmeans = KMeans(n_clusters=num_clusters, random_state=1234)
 df_clustering['cluster_label'] = kmeans.fit_predict(df_clustering)
 
 centroids = kmeans.cluster_centers_
-centroids_df = pd.DataFrame(centroids, columns=df_clustering.columns)  
+centroids_df = pd.DataFrame(centroids, columns=df_clustering.columns[:-1].tolist()) 
 print(centroids_df)
 
 
-# List of specific interpertable features per cluster
+# List of specific interpretable features per cluster
 specific_features = ['vm', 'polis_2', 'polis_5','age', 'SF', 'SF_woord_count','status_A', 'status_G', 'status_P','status_S']
 
 for cluster_label in range(num_clusters):
