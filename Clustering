@@ -101,7 +101,7 @@ df_clustering[numerical_features] = scaler.fit_transform(df_clustering[numerical
 
 
 # Cluster and find centroids for all features
-num_clusters = 3
+num_clusters = 4
 kmeans = KMeans(n_clusters=num_clusters, random_state=1234)
 df_clustering['cluster_label'] = kmeans.fit_predict(df_clustering)
 
