@@ -1,5 +1,3 @@
-# Importing Libraries
-
 
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.linear_model import LogisticRegression
@@ -21,6 +19,7 @@ import numpy as np
 erasmus_db = create_df()
 random_state = 1810
 erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
+
 
 factor = pd.factorize(erasmus_db_for_training['status'])
 erasmus_db.status = factor[0]
@@ -96,7 +95,7 @@ grid_search.fit(X_train, y_train)
 print("Best Hyperparameters:", grid_search.best_params_)
 
 best_model = grid_search.best_estimator_
-#joblib.dump(best_model, 'best_model.joblib')
+# joblib.dump(best_model, 'best_model.joblib')
 predictions = best_model.predict(X_test)
 
 # Evaluate the model performance on the test set
@@ -129,7 +128,7 @@ plt.plot(penalty_values,
 plt.plot(penalty_values,
          results['mean_test_recall'], label='Recall', marker='o')
 # plt.plot(penalty_values,
-         # results['mean_test_accuracy'], label='Accuracy', marker='o')
+# results['mean_test_accuracy'], label='Accuracy', marker='o')
 # Plot F1 score
 plt.plot(penalty_values,
          results['mean_test_f1'], label='F1 Score', marker='o')
@@ -147,12 +146,11 @@ plt.show()
 best_model.fit(X, y)
 
 
-
 # all the things about feature importance i still need to see how to do for lasso
 # Get coefficients
 coefficients = best_model.named_steps['classifier'].coef_
-abs_coef= np.abs(coefficients)
-avg_abs_coef= np.mean(abs_coef, axis=0)
+abs_coef = np.abs(coefficients)
+avg_abs_coef = np.mean(abs_coef, axis=0)
 
 # Get feature names from the preprocessor
 numeric_features_preprocessed = best_model.named_steps['preprocessor'].transformers_[
