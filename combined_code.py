@@ -125,7 +125,8 @@ class InsuranceClassifier:
 
     def get_report(self):
         report = classification_report(self.y_test, self.predictions)
-        print("Classification Report:\n", report)
+        print(
+            f"Classification Report([0, 1, 2] -{pd.Categorical.from_codes([0, 1, 2], self.definitions).tolist()}):\n", report)
 
     def get_tuning_graph(self):
         results = self.grid_search.cv_results_
