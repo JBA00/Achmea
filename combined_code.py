@@ -41,7 +41,7 @@ class InsuranceClassifier:
         self.ids = self.erasmus_db["id"]
         self.erasmus_db = self.erasmus_db.drop("id", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
-            "old_predictions", axis=1)
+            "id", axis=1)
         self.prev_predictions = self.erasmus_db["old_predictions"]
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
@@ -232,8 +232,9 @@ class InsuranceClassifier:
             f"The recall from old predictions - {old_recall}. New recall value - {new_recall}")
 
     def save_predictions(self):
-        predictions = erasmus_db["predictions_defactor"]
+        predictions = pd.DataFrame()
         predictions["id"] = self.ids
+        predictions["predictions"] = self.erasmus_db["predictions_defactor"]
         predictions.to_excel("predictions.xlsx")
 
     def save_the_model(self):
@@ -252,12 +253,15 @@ model = {"Random Forest": {
 
 my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training,
                             model["Random Forest"])
+"""
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
 my_rf.get_misclassified_g_status()
 my_rf.get_missing_amounts()
 my_rf.compare_with_high_low_predictions()
+"""
+my_rf.save_predictions()
 
 my_lasso = InsuranceClassifier("Lasso", erasmus_db, erasmus_db_for_training,
                                model["Lasso"])
