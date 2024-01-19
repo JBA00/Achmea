@@ -227,6 +227,10 @@ class InsuranceClassifier:
         print(
             f"The recall from old predictions - {old_recall}. New recall value - {new_recall}")
 
+    def save_predictions(self):
+        predictions = erasmus_db[["id", "predictions_defactor"]]
+        predictions.to_excel("predictions.xlsx")
+
     def save_the_model(self):
         joblib.dump(self.best_model, 'best_model.joblib')
 
