@@ -38,7 +38,10 @@ class InsuranceClassifier:
         self._find_best()
 
     def _prepare_variables(self):
-
+        self.ids = self.erasmus_db["id"]
+        self.erasmus_db = self.erasmus_db.drop("id", axis=1)
+        self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
+            "old_predictions", axis=1)
         self.prev_predictions = self.erasmus_db["old_predictions"]
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
@@ -204,8 +207,9 @@ class InsuranceClassifier:
     def get_missing_amounts(self):
 
         # TODO: BIA FIX!!!!!!pls
-        missed_amount = len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "A") & (self.erasmus_db["status"] =="S")]) * 100 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] =="P")]) * 1500 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] =="A")])* 15000 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "P") & (self.erasmus_db["status"] =="A")]) * 15000
-    
+        missed_amount = len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "A") & (self.erasmus_db["status"] == "S")]) * 100 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "P")]) * 1500 + len(
+            self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "A")]) * 15000 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "P") & (self.erasmus_db["status"] == "A")]) * 15000
+
         print(missed_amount)
 
     def compare_with_high_low_predictions(self):
@@ -228,7 +232,8 @@ class InsuranceClassifier:
             f"The recall from old predictions - {old_recall}. New recall value - {new_recall}")
 
     def save_predictions(self):
-        predictions = erasmus_db[["id", "predictions_defactor"]]
+        predictions = erasmus_db["predictions_defactor"]
+        predictions["id"] = self.ids
         predictions.to_excel("predictions.xlsx")
 
     def save_the_model(self):
