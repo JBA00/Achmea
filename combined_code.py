@@ -204,8 +204,8 @@ class InsuranceClassifier:
     def get_missing_amounts(self):
 
         # TODO: BIA FIX!!!!!!pls
-        missed_amount = len(self.g_data["predictions_defactor"][self.g_data["predictions_defactor"] == "A"]) * 15000 + len(self.g_data["predictions_defactor"]
-                                                                                                                           [self.g_data["predictions_defactor"] == "P"]) * 1500 - len(self.g_data["predictions_defactor"][self.g_data["predictions_defactor"] == "S"]) * 100
+        missed_amount = len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "A") & (self.erasmus_db["status"] =="S")]) * 100 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] =="P")]) * 1500 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] =="A")])* 15000 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "P") & (self.erasmus_db["status"] =="A")]) * 15000
+    
         print(missed_amount)
 
     def compare_with_high_low_predictions(self):
