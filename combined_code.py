@@ -90,7 +90,8 @@ class InsuranceClassifier:
             'accuracy': make_scorer(accuracy_score),
             'precision': make_scorer(precision_score, average='weighted'),
             'recall': make_scorer(recall_score, average='weighted'),
-            'f1': make_scorer(f1_score, average='weighted')
+            'f1': make_scorer(f1_score, average='weighted'),
+            'costs': make_scorer(self.minimize_function, greater_is_better=False)
         }
 
         if self.type_of_classifier == "Random Forest":
@@ -111,8 +112,9 @@ class InsuranceClassifier:
 
         self.grid_search = GridSearchCV(estimator=self.model_pipeline,
                                         param_grid=self.param_grid,
-                                        scoring=self.scoring, cv=self.cv,
-                                        refit='recall', verbose=2, n_jobs=-1)
+                                        scoring=self.scoring,
+                                        cv=self.cv,
+                                        refit='costs', verbose=2, n_jobs=-1)
 
     def _find_best(self):
 
@@ -135,22 +137,19 @@ class InsuranceClassifier:
         results = self.grid_search.cv_results_
         if self.type_of_classifier == "Random Forest":
             features = self.param_grid['classifier__max_features']
+            what_we_are_tuning = "max_features"
         else:
             features = self.param_grid['classifier__C']
+            what_we_are_tuning = "penalty"
 
         # Plotting the metrics for different max_features values
         plt.figure(figsize=(10, 6))
 
-        # Plot precision
-        plt.plot(features,
-                 results['mean_test_precision'], label='Precision', marker='o')
+        plt.plot(features, results['mean_test_costs'],
+                 label='Custom Loss', marker='o')
 
-        # Plot recall
-        plt.plot(features,
-                 results['mean_test_recall'], label='Recall', marker='o')
-
-        plt.title('Model Metrics for Different max_features Values')
-        plt.xlabel('max_features')
+        plt.title(f'Model Metrics for Different {what_we_are_tuning} Values')
+        plt.xlabel(what_we_are_tuning)
         plt.ylabel('Score')
         plt.legend()
         plt.grid(True)
@@ -212,6 +211,23 @@ class InsuranceClassifier:
 
         print(missed_amount)
 
+    def minimize_function(self, y_true, y_pred):
+
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
+
+        # Calculate the different conditions
+        condition_1 = np.sum((y_pred == 1) & (y_true == 0)) * 100
+        condition_2 = np.sum((y_pred == 0) & (y_true == 2)) * 1500
+        condition_3 = np.sum((y_pred == 0) & (y_true == 1)) * 15000
+        condition_4 = np.sum((y_pred == 2) & (y_true == 1)) * 15000
+
+        # Total missed amount
+        missed_amount = -1 * (condition_1 + condition_2 +
+                              condition_3 + condition_4)
+
+        return missed_amount
+
     def compare_with_high_low_predictions(self):
         comparison_table = self.erasmus_db[["status", "predictions_defactor"]]
         comparison_table["old_predictions"] = self.prev_predictions
@@ -253,14 +269,17 @@ model = {"Random Forest": {
 
 my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training,
                             model["Random Forest"])
-"""
+
+my_rf.minimize_function(pd.factorize(my_rf.erasmus_db["status"])[
+                        0], my_rf.erasmus_db["predictions"])
+my_rf.grid_search.best_estimator_
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
 my_rf.get_misclassified_g_status()
 my_rf.get_missing_amounts()
 my_rf.compare_with_high_low_predictions()
-"""
+
 my_rf.save_predictions()
 
 my_lasso = InsuranceClassifier("Lasso", erasmus_db, erasmus_db_for_training,
