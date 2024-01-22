@@ -30,10 +30,9 @@ def create_df(what_for="random_forest"):
 
     erasmus_db['SF_woord_count'] = [len(x) if isinstance(
         x, list) else None for x in erasmus_db['SF_woord']]
-
-    #if what_for == "random_forest":
-        #erasmus_db = erasmus_db.drop("SF_woord", axis=1).drop(
-            #"id", axis=1)
+    
+        if what_for == "random_forest":
+        erasmus_db = erasmus_db.drop("SF_woord", axis=1)
 
     erasmus_db = erasmus_db.rename(columns={"prediction": "old_predictions"})
 
