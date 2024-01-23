@@ -6,6 +6,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 
+
 def create_df(what_for="clustering"):
     # Create the data frames
     erasmus_db = pd.read_csv("Erasmus.csv", sep=";")
@@ -68,21 +69,36 @@ def create_df(what_for="clustering"):
     return erasmus_db
 
 
-#clustering
+# Clustering
 df_clustering = create_df("clustering")
 print(df_clustering)
-
 
 
 # Create dummy variables for status
 df_clustering = pd.get_dummies(df_clustering, columns=['status'])
 print(df_clustering.head())
 
-#find numerical , categorical and boolean features 
-numerical_features = df_clustering.select_dtypes(include=['int64', 'float64']).columns
-categorical_features = df_clustering.select_dtypes(include=['object']).columns
-boolean_features = df_clustering.select_dtypes(include=['bool']).columns
+# Create bolean values for VT Features
+columns_to_replace = ['VT_LG3_2_1', 'VT_LG4_1a', 'VT_LG4_1d', 'VT_LG4_1e', 'VT_LG4_1b',
+       'VT_LG2_2_2', 'VT_cat_1b', 'VT_cat_1d', 'VT_cat_1g', 'VT_cat_1he',
+       'VT_cat_2a', 'VT_cat_2b', 'VT_cat_2c', 'VT_cat_2f', 'VT_cat_2k',
+       'VT_cat_3b', 'VT_cat_3e', 'VT_cat_4a', 'VT_cat_4b', 'VT_cat_4f',
+       'VT_cat_4hd', 'VT_cat_4he', 'VT_cat_5e', 'VT_cat_5gc', 'VT_cat_6b',
+       'VT_cat_7a', 'VT_cat_8a', 'VT_cat_9a', 'VT_cat_10a', 'VT_cat_10b',
+       'VT_cat_10c', 'VT_cat_10f', 'VT_cat_10g', 'VT_cat_10g.1',
+       'VT_cat_10g.2', 'VT_cat_10g.3', 'VT_cat_10g.4', 'VT_cat_11d',
+       'VT_EV_1_1', 'VT_EV_2_1', 'VT_EV_3_1', 'VT_EV_4_1', 'VT_EV_6_1',
+       'VT_EV_7_1_3', 'VT_EV_8_1_3']
 
+# Replace "999" with False and all other values with True
+df_clustering[columns_to_replace] = df_clustering[columns_to_replace] == '999'
+print(df_clustering.head())
+
+#find numerical, and boolean features 
+numerical_features = df_clustering.select_dtypes(include=['int64', 'float64']).columns
+boolean_features = df_clustering.select_dtypes(include=['bool']).columns
+print(numerical_features)
+print(boolean_features)
 
 # Turn Boolean features to binary
 def binary_transform(value, desired_value=True):
@@ -101,23 +117,31 @@ df_clustering[numerical_features] = scaler.fit_transform(df_clustering[numerical
 
 
 # Cluster and find centroids for all features
-num_clusters = 4
+num_clusters = 2
 kmeans = KMeans(n_clusters=num_clusters, random_state=1234)
 df_clustering['cluster_label'] = kmeans.fit_predict(df_clustering)
 
 centroids = kmeans.cluster_centers_
-centroids_df = pd.DataFrame(centroids, columns=df_clustering.columns[:-1].tolist()) 
+centroids_df = pd.DataFrame(centroids, columns=df_clustering.columns[:-1])
 print(centroids_df)
 
-
-# List of specific interpretable features per cluster
-specific_features = ['vm', 'polis_2', 'polis_5','age', 'SF', 'SF_woord_count','status_A', 'status_G', 'status_P','status_S']
-
+# top 5 features
 for cluster_label in range(num_clusters):
-    print(f"\nCluster {cluster_label + 1} Feature Values:")
-    for feature in specific_features:
-        # Get the value of the specific feature for the current cluster
+    print(f"\nCluster {cluster_label + 1} Features with Biggest Effect:")
+    
+    
+    abs_centroids = abs(centroids_df.loc[cluster_label, :])
+    
+   
+    sorted_features = abs_centroids.sort_values(ascending=False)
+    
+    
+    top_features = sorted_features.index[:5]  
+    for feature in top_features:
         feature_value = centroids_df.loc[cluster_label, feature]
         print(f"- {feature}: {feature_value}")
+
+
+
 
 
