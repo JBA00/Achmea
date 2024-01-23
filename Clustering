@@ -141,7 +141,38 @@ for cluster_label in range(num_clusters):
         feature_value = centroids_df.loc[cluster_label, feature]
         print(f"- {feature}: {feature_value}")
 
+# Heat map for clusters
+# Data for Cluster 1
+cluster1_data = {
+    'EV_6': 0.9861539818326202,
+    'EV_3': 0.9481435752711952,
+    'EV_8': 0.9236264220830628,
+    'cat_1i': 0.9039597848134905,
+    'cat_4i': 0.8896728106534944,
+}
 
+# Data for Cluster 2
+cluster2_data = {
+    'cat_4i': 0.972566894572463,
+    'cat_1i': 0.9651388537182375,
+    'cat_8h': 0.9518021440026982,
+    'cat_6g': 0.9481725331307553,
+    'cat_7f': 0.9381277960665121,
+}
+
+# Create a DataFrame
+df_cluster2 = pd.DataFrame(list(cluster2_data.items()), columns=['Features', 'Cluster 2'])
+df_cluster1 = pd.DataFrame(list(cluster1_data.items()), columns=['Features', 'Cluster 1'])
+
+
+# Pivot the data for heatmap
+heatmap_data = pd.concat([df_cluster1.set_index('Features'), df_cluster2.set_index('Features')], axis=1).T
+
+# Create the heatmap
+plt.figure(figsize=(10, 6))
+sns.heatmap(heatmap_data, cmap='viridis', annot=True, fmt=".3f", linewidths=.5)
+plt.title('Feature Effects in Clusters')
+plt.show()
 
 
 
