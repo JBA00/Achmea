@@ -5,7 +5,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
-
+import seaborn as sns
 
 def create_df(what_for="clustering"):
     # Create the data frames
@@ -64,7 +64,7 @@ def create_df(what_for="clustering"):
         erasmus_db = erasmus_db[["vm", "polis_2", "polis_5",
                                  "age", "status", "LG1", "SF_woord_count"]]
     if what_for=="clustering":
-        erasmus_db = erasmus_db.drop(["SF_woord", "id", "prediction"], axis=1)    
+        erasmus_db = erasmus_db.drop(["SF_woord","prediction"], axis=1)    
 
     return erasmus_db
 
@@ -108,7 +108,7 @@ df_clustering[boolean_features] = df_clustering[boolean_features].applymap(binar
 print(df_clustering)
 
 # Exclude vm and sf from numerical features 
-features_to_exclude = ['vm', 'SF']
+features_to_exclude = ['vm', 'SF', 'id']
 numerical_features = numerical_features.difference(features_to_exclude)
 
 # Normalize numerical features
@@ -119,45 +119,67 @@ df_clustering[numerical_features] = scaler.fit_transform(df_clustering[numerical
 # Cluster and find centroids for all features
 num_clusters = 2
 kmeans = KMeans(n_clusters=num_clusters, random_state=1234)
-df_clustering['cluster_label'] = kmeans.fit_predict(df_clustering)
+df_clustering['cluster_label'] = kmeans.fit_predict(df_clustering.drop('id', axis=1))
 
-centroids = kmeans.cluster_centers_
-centroids_df = pd.DataFrame(centroids, columns=df_clustering.columns[:-1])
-print(centroids_df)
+# Add 'id' column back to the DataFrame
 
-# top 5 features
+df_clustering_with_clusters = pd.concat([df_clustering[['id']], df_clustering.drop('id', axis=1)], axis=1)
+
+# Get the count of IDs in each cluster
+cluster_counts = df_clustering_with_clusters['cluster_label'].value_counts()
+cluster_ids_dict = {}
+
+print(df_clustering)
+
 for cluster_label in range(num_clusters):
     print(f"\nCluster {cluster_label + 1} Features with Biggest Effect:")
     
+    # Get IDs for the specific cluster
+    cluster_ids = df_clustering_with_clusters.loc[df_clustering_with_clusters['cluster_label'] == cluster_label, 'id']
     
-    abs_centroids = abs(centroids_df.loc[cluster_label, :])
+    # Store IDs in the dictionary
+    cluster_ids_dict[f'Cluster_{cluster_label + 1}'] = cluster_ids.tolist()
     
+    # Print the count of IDs in the cluster
+    #print(f"Count of IDs in Cluster {cluster_label + 1}: {cluster_counts[cluster_label]}")
+    
+    # Print IDs
+    #print(f"IDs in Cluster {cluster_label + 1}: {cluster_ids.tolist()}")
+    
+    # Print top 5 features for the cluster
+    abs_centroids = abs(df_clustering.loc[df_clustering['cluster_label'] == cluster_label, :].drop(['id', 'cluster_label'], axis=1).mean())
    
     sorted_features = abs_centroids.sort_values(ascending=False)
     
-    
     top_features = sorted_features.index[:5]  
     for feature in top_features:
-        feature_value = centroids_df.loc[cluster_label, feature]
+        feature_value = df_clustering.loc[df_clustering['cluster_label'] == cluster_label, feature].mean()
         print(f"- {feature}: {feature_value}")
+
+# Access the IDs for each cluster using the dictionary
+#for cluster_name, ids in cluster_ids_dict.items():
+    #print(f"\nIDs in {cluster_name}: {ids}")
+    
+
 
 # Heat map for clusters
 # Data for Cluster 1
 cluster1_data = {
-    'EV_6': 0.9861539818326202,
-    'EV_3': 0.9481435752711952,
-    'EV_8': 0.9236264220830628,
-    'cat_1i': 0.9039597848134905,
-    'cat_4i': 0.8896728106534944,
+    'EV_6': 0.9861564235958028,
+    'EV_3': 0.9481527202186756,
+    'EV_8': 0.9236398906621991,
+    'cat_1i': 0.903976721629486,
+    'cat_4i': 0.8896922669958558
+,
 }
 
 # Data for Cluster 2
 cluster2_data = {
-    'cat_4i': 0.972566894572463,
-    'cat_1i': 0.9651388537182375,
-    'cat_8h': 0.9518021440026982,
-    'cat_6g': 0.9481725331307553,
-    'cat_7f': 0.9381277960665121,
+    'cat_4i': 0.9725622625580413,
+    'cat_1i': 0.9651329674968341,
+    'cat_8h': 0.9517940059096666,
+    'cat_6g': 0.9481637821865766,
+    'cat_7f': 0.938117349092444,
 }
 
 # Create a DataFrame
@@ -174,5 +196,6 @@ sns.heatmap(heatmap_data, cmap='viridis', annot=True, fmt=".3f", linewidths=.5)
 plt.title('Feature Effects in Clusters')
 plt.show()
 
-
-
+# Save the DataFrame to an Excel file
+#cluster_ids_df = pd.DataFrame.from_dict(cluster_ids_dict, orient='index').transpose()
+#cluster_ids_df.to_excel("cluster_ids.xlsx", index=False)
