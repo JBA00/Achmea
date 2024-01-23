@@ -89,6 +89,7 @@ class InsuranceClassifier:
             'recall': make_scorer(recall_score, average='weighted'),
             'f1': make_scorer(f1_score, average='weighted'),
             'costs': make_scorer(self.minimize_function, greater_is_better=True)
+            'costs': make_scorer(self.minimize_function, greater_is_better=True)
         }
 
         if self.type_of_classifier == "Random Forest":
