@@ -91,7 +91,7 @@ class InsuranceClassifier:
             'precision': make_scorer(precision_score, average='weighted'),
             'recall': make_scorer(recall_score, average='weighted'),
             'f1': make_scorer(f1_score, average='weighted'),
-            'costs': make_scorer(self.minimize_function, greater_is_better=False)
+            'costs': make_scorer(self.minimize_function, greater_is_better=True)
         }
 
         if self.type_of_classifier == "Random Forest":
@@ -223,10 +223,10 @@ class InsuranceClassifier:
         condition_4 = np.sum((y_pred == 2) & (y_true == 1)) * 15000
 
         # Total missed amount
-        missed_amount = -1 * (condition_1 + condition_2 +
-                              condition_3 + condition_4)
+        missed_amount = (condition_1 + condition_2 +
+                         condition_3 + condition_4)
 
-        return missed_amount
+        return -missed_amount
 
     def compare_with_high_low_predictions(self):
         comparison_table = self.erasmus_db[["status", "predictions_defactor"]]
@@ -262,7 +262,7 @@ erasmus_db = create_df()
 # Move it later to data_research
 erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
 model = {"Random Forest": {
-    'classifier__max_features': list(range(1, 100, 6))},
+    'classifier__max_features': list(range(1, 100, 20))},
     "Lasso":
     {'classifier__C':  np.arange(0.001, 0.105, 0.005)}}
 
@@ -272,7 +272,8 @@ my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training
 
 my_rf.minimize_function(pd.factorize(my_rf.erasmus_db["status"])[
                         0], my_rf.erasmus_db["predictions"])
-my_rf.grid_search.best_estimator_
+my_rf.grid_search.cv_results_["mean_test_costs"]
+my_rf.grid_search.best_params_
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
