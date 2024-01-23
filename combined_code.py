@@ -35,7 +35,7 @@ class InsuranceClassifier:
         self._preprocess_data()
         self._cv_creation()
         self._classify_random_forest()
-        self._find_best()
+        self.choose_model_by_rule()
 
     def _prepare_variables(self):
 
@@ -88,7 +88,7 @@ class InsuranceClassifier:
             'precision': make_scorer(precision_score, average='weighted'),
             'recall': make_scorer(recall_score, average='weighted'),
             'f1': make_scorer(f1_score, average='weighted'),
-            'costs': make_scorer(self.minimize_function, greater_is_better=False)
+            'costs': make_scorer(self.minimize_function, greater_is_better=True)
         }
 
         if self.type_of_classifier == "Random Forest":
@@ -109,14 +109,28 @@ class InsuranceClassifier:
 
         self.grid_search = GridSearchCV(estimator=self.model_pipeline,
                                         param_grid=self.param_grid,
-                                        scoring=self.scoring,
+                                        scoring=self.minimize_function,
                                         cv=self.cv,
                                         refit='costs', verbose=2, n_jobs=-1)
 
-    def _find_best(self):
-
+    def choose_model_by_rule(self):
+        # Get the results of the grid search
         self.grid_search.fit(self.X_train, self.y_train)
-        self.best_model = self.grid_search.best_estimator_
+        cv_results = self.grid_search.cv_results_
+        # Find the index of the best model
+        best_index = np.argmax(cv_results['mean_test_score'])
+        # Calculate the standard error of the best model
+        best_std = cv_results['std_test_score'][best_index]
+        # Find models within one standard error of the best model
+        candidates = np.where(
+            (cv_results['mean_test_score'] >= cv_results['mean_test_score'][best_index] - best_std) &
+            (cv_results['mean_test_score'] <= cv_results['mean_test_score'][best_index] + best_std)
+                )[0]
+        # Choose the simplest model among candidates
+        selected_index = candidates.max()
+        # Update the best model
+        self.best_model = self.grid_search.best_estimator_.set_params(classifier__max_features=cv_results["param_classifier__max_features"][selected_index])
+        # Update predictions accordingly
         self.predictions = self.best_model.predict(self.X_test)
         self.predictions_full = self.best_model.predict(
             self.erasmus_db.drop("status", axis=1))
@@ -142,7 +156,7 @@ class InsuranceClassifier:
         # Plotting the metrics for different max_features values
         plt.figure(figsize=(10, 6))
 
-        plt.plot(features, results['mean_test_costs'],
+        plt.plot(features, results['mean_test_score'],
                  label='Custom Loss', marker='o')
 
         plt.title(f'Model Metrics for Different {what_we_are_tuning} Values')
@@ -207,10 +221,9 @@ class InsuranceClassifier:
     
         print(missed_amount)
 
-    def minimize_function(self, y_true, y_pred):
-
-        y_true = np.array(y_true)
-        y_pred = np.array(y_pred)
+    def minimize_function(self,estimator, X_test, y_test):
+        y_true = np.array(y_test)
+        y_pred = estimator.predict(X_test)
 
         # Calculate the different conditions
         condition_1 = np.sum((y_pred == 1) & (y_true == 0)) * 100
@@ -219,10 +232,9 @@ class InsuranceClassifier:
         condition_4 = np.sum((y_pred == 2) & (y_true == 1)) * 15000
 
         # Total missed amount
-        missed_amount = -1 * (condition_1 + condition_2 +
-                              condition_3 + condition_4)
-
-        return missed_amount
+        missed_amount = 1 * (condition_1 + condition_2 +
+                            condition_3 + condition_4)
+        return -missed_amount
 
     def compare_with_high_low_predictions(self):
         comparison_table = self.erasmus_db[["status", "predictions_defactor"]]
@@ -252,31 +264,25 @@ erasmus_db = create_df()
 # Move it later to data_research
 erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
 model = {"Random Forest": {
-    'classifier__max_features': list(range(1, 100, 6))},
+    'classifier__max_features': list(range(1, 250, 5))},
     "Lasso":
     {'classifier__C':  np.arange(0.001, 0.105, 0.005)}}
 
 
 my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training,
                             model["Random Forest"])
-<<<<<<< HEAD
-=======
 
 my_rf.minimize_function(pd.factorize(my_rf.erasmus_db["status"])[
                         0], my_rf.erasmus_db["predictions"])
-my_rf.grid_search.best_estimator_
->>>>>>> 9b3373a006f10f0e92dbf301fb0e6b5ad5f3e0ef
+my_rf.grid_search.cv_results_["mean_test_score"]
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
 my_rf.get_misclassified_g_status()
 my_rf.get_missing_amounts()
 my_rf.compare_with_high_low_predictions()
-<<<<<<< HEAD
-=======
 
 my_rf.save_predictions()
->>>>>>> 9b3373a006f10f0e92dbf301fb0e6b5ad5f3e0ef
 
 my_lasso = InsuranceClassifier("Lasso", erasmus_db, erasmus_db_for_training,
                                model["Lasso"])
