@@ -38,7 +38,6 @@ class InsuranceClassifier:
         self.choose_model_by_rule()
 
     def _prepare_variables(self):
-
         self.prev_predictions = self.erasmus_db["old_predictions"]
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
@@ -88,7 +87,6 @@ class InsuranceClassifier:
             'precision': make_scorer(precision_score, average='weighted'),
             'recall': make_scorer(recall_score, average='weighted'),
             'f1': make_scorer(f1_score, average='weighted'),
-            'costs': make_scorer(self.minimize_function, greater_is_better=True)
             'costs': make_scorer(self.minimize_function, greater_is_better=True)
         }
 
@@ -216,10 +214,7 @@ class InsuranceClassifier:
         plt.show()
 
     def get_missing_amounts(self):
-
-        # TODO: BIA FIX!!!!!!pls
         missed_amount = len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "A") & (self.erasmus_db["status"] =="S")]) * 100 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] =="P")]) * 1500 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] =="A")])* 15000 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "P") & (self.erasmus_db["status"] =="A")]) * 15000
-    
         print(missed_amount)
 
     def minimize_function(self,estimator, X_test, y_test):
@@ -265,7 +260,7 @@ erasmus_db = create_df()
 # Move it later to data_research
 erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
 model = {"Random Forest": {
-    'classifier__max_features': list(range(1, 250, 5))},
+    'classifier__max_features': list(range(10, 250, 10))},
     "Lasso":
     {'classifier__C':  np.arange(0.001, 0.105, 0.005)}}
 
@@ -276,6 +271,7 @@ my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training
 my_rf.minimize_function(pd.factorize(my_rf.erasmus_db["status"])[
                         0], my_rf.erasmus_db["predictions"])
 my_rf.grid_search.cv_results_["mean_test_score"]
+my_rf.grid_search.best_params_
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
