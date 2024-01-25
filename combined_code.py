@@ -38,6 +38,10 @@ class InsuranceClassifier:
         self.choose_model_by_rule()
 
     def _prepare_variables(self):
+        self.ids = self.erasmus_db["id"]
+        self.erasmus_db = self.erasmus_db.drop("id", axis=1)
+        self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
+            "id", axis=1)
         self.prev_predictions = self.erasmus_db["old_predictions"]
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
@@ -128,7 +132,7 @@ class InsuranceClassifier:
         # Choose the simplest model among candidates
         selected_index = candidates.max()
         # Update the best model
-        self.best_model = self.grid_search.best_estimator_.set_params(classifier__max_features=cv_results["param_classifier__max_features"][selected_index])
+        self.best_model = self.grid_search.best_estimator_.set_params(classifier__n_estimators=cv_results["param_classifier__max_features"][selected_index])
         # Update predictions accordingly
         self.predictions = self.best_model.predict(self.X_test)
         self.predictions_full = self.best_model.predict(
@@ -146,8 +150,8 @@ class InsuranceClassifier:
     def get_tuning_graph(self):
         results = self.grid_search.cv_results_
         if self.type_of_classifier == "Random Forest":
-            features = self.param_grid['classifier__max_features']
-            what_we_are_tuning = "max_features"
+            features = self.param_grid['classifier__n_estimators']
+            what_we_are_tuning = "n_estimators"
         else:
             features = self.param_grid['classifier__C']
             what_we_are_tuning = "penalty"
@@ -250,6 +254,13 @@ class InsuranceClassifier:
 
         print(
             f"The recall from old predictions - {old_recall}. New recall value - {new_recall}")
+        
+    def save_predictions(self):
+        predictions = pd.DataFrame()
+        predictions["id"] = self.ids
+        predictions["predictions"] = self.erasmus_db["predictions_defactor"]
+        predictions.to_excel("predictions.xlsx")
+
 
     def save_the_model(self):
         joblib.dump(self.best_model, 'best_model.joblib')
@@ -260,7 +271,7 @@ erasmus_db = create_df()
 # Move it later to data_research
 erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
 model = {"Random Forest": {
-    'classifier__max_features': list(range(10, 250, 10))},
+    'classifier__max_features':list(range(80,200,10))},
     "Lasso":
     {'classifier__C':  np.arange(0.001, 0.105, 0.005)}}
 
@@ -280,6 +291,8 @@ my_rf.get_missing_amounts()
 my_rf.compare_with_high_low_predictions()
 
 my_rf.save_predictions()
+
+my_rf.save_the_model()
 
 my_lasso = InsuranceClassifier("Lasso", erasmus_db, erasmus_db_for_training,
                                model["Lasso"])
