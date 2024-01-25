@@ -15,6 +15,7 @@ from data_research import create_df
 import matplotlib.pyplot as plt
 import joblib
 import numpy as np
+import os
 
 
 class InsuranceClassifier:
@@ -35,7 +36,10 @@ class InsuranceClassifier:
         self._preprocess_data()
         self._cv_creation()
         self._classify_random_forest()
-        self.choose_model_by_rule()
+        if os.path.exists("best_model.joblib"):
+            self.load_the_model()
+        else:
+            self.choose_model_by_rule()
 
     def _prepare_variables(self):
         self.ids = self.erasmus_db["id"]
@@ -132,8 +136,18 @@ class InsuranceClassifier:
         # Choose the simplest model among candidates
         selected_index = candidates.max()
         # Update the best model
-        self.best_model = self.grid_search.best_estimator_.set_params(classifier__n_estimators=cv_results["param_classifier__max_features"][selected_index])
+        self.best_model = self.grid_search.best_estimator_.set_params(classifier__max_features=cv_results["param_classifier__max_features"][selected_index])
         # Update predictions accordingly
+        self.predictions = self.best_model.predict(self.X_test)
+        self.predictions_full = self.best_model.predict(
+            self.erasmus_db.drop("status", axis=1))
+        self.erasmus_db["predictions"] = self.predictions_full
+        defactorized_column = pd.Categorical.from_codes(
+            self.erasmus_db['predictions'], self.definitions)
+        self.erasmus_db['predictions_defactor'] = defactorized_column
+    
+    def load_the_model(self):
+        self.best_model = joblib.load("best_model.joblib")
         self.predictions = self.best_model.predict(self.X_test)
         self.predictions_full = self.best_model.predict(
             self.erasmus_db.drop("status", axis=1))
@@ -150,8 +164,8 @@ class InsuranceClassifier:
     def get_tuning_graph(self):
         results = self.grid_search.cv_results_
         if self.type_of_classifier == "Random Forest":
-            features = self.param_grid['classifier__n_estimators']
-            what_we_are_tuning = "n_estimators"
+            features = self.param_grid['classifier__max_features']
+            what_we_are_tuning = "max_features"
         else:
             features = self.param_grid['classifier__C']
             what_we_are_tuning = "penalty"
@@ -264,7 +278,6 @@ class InsuranceClassifier:
 
     def save_the_model(self):
         joblib.dump(self.best_model, 'best_model.joblib')
-
 
 erasmus_db = create_df()
 
