@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import joblib
 import numpy as np
 import os
+import os
 
 
 class InsuranceClassifier:
@@ -40,8 +41,16 @@ class InsuranceClassifier:
             self.load_the_model()
         else:
             self.choose_model_by_rule()
+        if os.path.exists("best_model.joblib"):
+            self.load_the_model()
+        else:
+            self.choose_model_by_rule()
 
     def _prepare_variables(self):
+        self.ids = self.erasmus_db["id"]
+        self.erasmus_db = self.erasmus_db.drop("id", axis=1)
+        self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
+            "id", axis=1)
         self.ids = self.erasmus_db["id"]
         self.erasmus_db = self.erasmus_db.drop("id", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
@@ -299,6 +308,7 @@ my_rf.minimize_function(pd.factorize(my_rf.erasmus_db["status"])[
                         0], my_rf.erasmus_db["predictions"])
 my_rf.grid_search.cv_results_["mean_test_score"]
 my_rf.grid_search.best_params_
+my_rf.grid_search.best_params_
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
@@ -307,6 +317,8 @@ my_rf.get_missing_amounts()
 my_rf.compare_with_high_low_predictions()
 
 my_rf.save_predictions()
+
+my_rf.save_the_model()
 
 my_rf.save_the_model()
 
