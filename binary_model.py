@@ -15,7 +15,6 @@ from data_research import create_df
 import matplotlib.pyplot as plt
 import joblib
 import numpy as np
-import os
 
 
 class InsuranceClassifier:
@@ -36,16 +35,10 @@ class InsuranceClassifier:
         self._preprocess_data()
         self._cv_creation()
         self._classify_random_forest()
-        if os.path.exists("best_model.joblib"):
-            self.load_the_model()
-        else:
-            self.choose_model_by_rule()
+        self._find_best()
 
     def _prepare_variables(self):
-        self.ids = self.erasmus_db["id"]
-        self.erasmus_db = self.erasmus_db.drop("id", axis=1)
-        self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
-            "id", axis=1)
+
         self.prev_predictions = self.erasmus_db["old_predictions"]
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
@@ -94,8 +87,7 @@ class InsuranceClassifier:
             'accuracy': make_scorer(accuracy_score),
             'precision': make_scorer(precision_score, average='weighted'),
             'recall': make_scorer(recall_score, average='weighted'),
-            'f1': make_scorer(f1_score, average='weighted'),
-            'costs': make_scorer(self.minimize_function, greater_is_better=True)
+            'f1': make_scorer(f1_score, average='weighted')
         }
 
         if self.type_of_classifier == "Random Forest":
@@ -118,7 +110,19 @@ class InsuranceClassifier:
                                         param_grid=self.param_grid,
                                         scoring=self.minimize_function,
                                         cv=self.cv,
-                                        refit='costs', verbose=2, n_jobs=-1)
+                                        refit='recall', verbose=2, n_jobs=-1)
+
+    def _find_best(self):
+
+        self.grid_search.fit(self.X_train, self.y_train)
+        self.best_model = self.grid_search.best_estimator_
+        self.predictions = self.best_model.predict(self.X_test)
+        self.predictions_full = self.best_model.predict(
+            self.erasmus_db.drop("status", axis=1))
+        self.erasmus_db["predictions"] = self.predictions_full
+        defactorized_column = pd.Categorical.from_codes(
+            self.erasmus_db['predictions'], self.definitions)
+        self.erasmus_db['predictions_defactor'] = defactorized_column
 
     def choose_model_by_rule(self):
         # Get the results of the grid search
@@ -148,20 +152,9 @@ class InsuranceClassifier:
             self.erasmus_db['predictions'], self.definitions)
         self.erasmus_db['predictions_defactor'] = defactorized_column
 
-    def load_the_model(self):
-        self.best_model = joblib.load("best_model.joblib")
-        self.predictions = self.best_model.predict(self.X_test)
-        self.predictions_full = self.best_model.predict(
-            self.erasmus_db.drop("status", axis=1))
-        self.erasmus_db["predictions"] = self.predictions_full
-        defactorized_column = pd.Categorical.from_codes(
-            self.erasmus_db['predictions'], self.definitions)
-        self.erasmus_db['predictions_defactor'] = defactorized_column
-
     def get_report(self):
         report = classification_report(self.y_test, self.predictions)
-        print(
-            f"Classification Report([0, 1, 2] -{pd.Categorical.from_codes([0, 1, 2], self.definitions).tolist()}):\n", report)
+        print(f"Classification :\n", report)
 
     def get_tuning_graph(self):
         results = self.grid_search.cv_results_
@@ -175,8 +168,9 @@ class InsuranceClassifier:
         # Plotting the metrics for different max_features values
         plt.figure(figsize=(10, 6))
 
-        plt.plot(features, results['mean_test_score'],
-                 label='Custom Loss', marker='o')
+        # Plot recall
+        plt.plot(features,
+                 results['mean_test_recall'], label='Recall', marker='o')
 
         plt.title(f'Model Metrics for Different {what_we_are_tuning} Values')
         plt.xlabel(what_we_are_tuning)
@@ -234,8 +228,11 @@ class InsuranceClassifier:
         plt.show()
 
     def get_missing_amounts(self):
+
+        # TODO: BIA FIX!!!!!!pls
         missed_amount = len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "A") & (self.erasmus_db["status"] == "S")]) * 100 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "P")]) * 1500 + len(
             self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "A")]) * 15000 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "P") & (self.erasmus_db["status"] == "A")]) * 15000
+
         print(missed_amount)
 
     def minimize_function(self, estimator, X_test, y_test):
@@ -272,12 +269,6 @@ class InsuranceClassifier:
         print(
             f"The recall from old predictions - {old_recall}. New recall value - {new_recall}")
 
-    def save_predictions(self):
-        predictions = pd.DataFrame()
-        predictions["id"] = self.ids
-        predictions["predictions"] = self.erasmus_db["predictions_defactor"]
-        predictions.to_excel("predictions.xlsx")
-
     def save_the_model(self):
         joblib.dump(self.best_model, 'best_model.joblib')
 
@@ -286,8 +277,14 @@ erasmus_db = create_df()
 
 # Move it later to data_research
 erasmus_db_for_training = erasmus_db[erasmus_db['status'] != "G"]
+
+erasmus_db["status"] = erasmus_db["status"].replace(
+    "S", "L").replace("A", "H").replace("P", "H")
+erasmus_db_for_training["status"] = erasmus_db_for_training["status"].replace(
+    "S", "L").replace("A", "H").replace("P", "H")
+
 model = {"Random Forest": {
-    'classifier__max_features': list(range(80, 200, 10))},
+    'classifier__max_features': list(range(1, 100, 5))},
     "Lasso":
     {'classifier__C':  np.arange(0.001, 0.105, 0.005)}}
 
@@ -295,10 +292,7 @@ model = {"Random Forest": {
 my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training,
                             model["Random Forest"])
 
-my_rf.minimize_function(pd.factorize(my_rf.erasmus_db["status"])[
-                        0], my_rf.erasmus_db["predictions"])
-my_rf.grid_search.cv_results_["mean_test_score"]
-my_rf.grid_search.best_params_
+
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
@@ -307,8 +301,6 @@ my_rf.get_missing_amounts()
 my_rf.compare_with_high_low_predictions()
 
 my_rf.save_predictions()
-
-my_rf.save_the_model()
 
 my_lasso = InsuranceClassifier("Lasso", erasmus_db, erasmus_db_for_training,
                                model["Lasso"])
