@@ -124,34 +124,6 @@ class InsuranceClassifier:
             self.erasmus_db['predictions'], self.definitions)
         self.erasmus_db['predictions_defactor'] = defactorized_column
 
-    def choose_model_by_rule(self):
-        # Get the results of the grid search
-        self.grid_search.fit(self.X_train, self.y_train)
-        cv_results = self.grid_search.cv_results_
-        # Find the index of the best model
-        best_index = np.argmax(cv_results['mean_test_score'])
-        # Calculate the standard error of the best model
-        best_std = cv_results['std_test_score'][best_index]
-        # Find models within one standard error of the best model
-        candidates = np.where(
-            (cv_results['mean_test_score'] >= cv_results['mean_test_score'][best_index] - best_std) &
-            (cv_results['mean_test_score'] <=
-             cv_results['mean_test_score'][best_index] + best_std)
-        )[0]
-        # Choose the simplest model among candidates
-        selected_index = candidates.max()
-        # Update the best model
-        self.best_model = self.grid_search.best_estimator_.set_params(
-            classifier__max_features=cv_results["param_classifier__max_features"][selected_index])
-        # Update predictions accordingly
-        self.predictions = self.best_model.predict(self.X_test)
-        self.predictions_full = self.best_model.predict(
-            self.erasmus_db.drop("status", axis=1))
-        self.erasmus_db["predictions"] = self.predictions_full
-        defactorized_column = pd.Categorical.from_codes(
-            self.erasmus_db['predictions'], self.definitions)
-        self.erasmus_db['predictions_defactor'] = defactorized_column
-
     def get_report(self):
         report = classification_report(self.y_test, self.predictions)
         print(f"Classification :\n", report)
@@ -229,7 +201,6 @@ class InsuranceClassifier:
 
     def get_missing_amounts(self):
 
-        # TODO: BIA FIX!!!!!!pls
         missed_amount = len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "A") & (self.erasmus_db["status"] == "S")]) * 100 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "P")]) * 1500 + len(
             self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "A")]) * 15000 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "P") & (self.erasmus_db["status"] == "A")]) * 15000
 
