@@ -19,11 +19,7 @@ model = {"Random Forest": {
 my_rf = InsuranceClassifier("Random Forest", erasmus_db, erasmus_db_for_training,
                             model["Random Forest"])
 
-my_rf.minimize_function(pd.factorize(my_rf.erasmus_db["status"])[
-                        0], my_rf.erasmus_db["predictions"])
-my_rf.grid_search.cv_results_["mean_test_score"]
-my_rf.grid_search.best_params_
-my_rf.grid_search.best_params_
+
 my_rf.get_report()
 my_rf.get_tuning_graph()
 my_rf.get_feature_importance_graph()
@@ -32,8 +28,6 @@ my_rf.get_missing_amounts()
 my_rf.compare_with_high_low_predictions()
 
 my_rf.save_predictions()
-
-my_rf.save_the_model()
 
 my_rf.save_the_model()
 
