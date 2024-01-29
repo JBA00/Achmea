@@ -57,7 +57,6 @@ class InsuranceClassifier:
         self.erasmus_db = self.erasmus_db.drop("id", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
             "id", axis=1)
-        self.prev_predictions = self.erasmus_db["old_predictions"]
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
             "old_predictions", axis=1)
@@ -146,18 +145,29 @@ class InsuranceClassifier:
                                         refit='costs', verbose=2, n_jobs=-1)
 
     def _find_best(self):
+        """This function finds the best hyperparameters for the model,
+        and creates predictions on the full data frame.
+        """
 
+        # Choosing the best hyperparameters.
         self.grid_search.fit(self.X_train, self.y_train)
         self.best_model = self.grid_search.best_estimator_
+
+        # Create predictions.
         self.predictions = self.best_model.predict(self.X_test)
         self.predictions_full = self.best_model.predict(
             self.erasmus_db.drop("status", axis=1))
         self.erasmus_db["predictions"] = self.predictions_full
+
+        # Defactorization of predictions column.
         defactorized_column = pd.Categorical.from_codes(
             self.erasmus_db['predictions'], self.definitions)
         self.erasmus_db['predictions_defactor'] = defactorized_column
 
     def load_the_model(self):
+        """If the previously trained saved in the repo, than it is used to 
+        generate predictions.
+        """
         self.best_model = joblib.load("best_model.joblib")
         self.predictions = self.best_model.predict(self.X_test)
         self.predictions_full = self.best_model.predict(
@@ -168,11 +178,17 @@ class InsuranceClassifier:
         self.erasmus_db['predictions_defactor'] = defactorized_column
 
     def get_report(self):
+        """This function creates a report with detailed scoring values 
+        report.
+        """
         report = classification_report(self.y_test, self.predictions)
         print(
             f"Classification Report([0, 1, 2] -{pd.Categorical.from_codes([0, 1, 2], self.definitions).tolist()}):\n", report)
 
     def get_tuning_graph(self):
+        """This function generates a graph with the results of the tuning of
+        hyperparameters.
+        """
         results = self.grid_search.cv_results_
         if self.type_of_classifier == "Random Forest":
             features = self.param_grid['classifier__max_features']
@@ -181,7 +197,7 @@ class InsuranceClassifier:
             features = self.param_grid['classifier__C']
             what_we_are_tuning = "penalty"
 
-        # Plotting the metrics for different max_features values
+        # Plotting the metrics for different max_features values.
         plt.figure(figsize=(10, 6))
 
         plt.plot(features, results['mean_test_score'],
@@ -196,6 +212,9 @@ class InsuranceClassifier:
         plt.show()
 
     def get_feature_importance_graph(self):
+        """This function generates the plots with features importance.
+        """
+
         self.best_model.fit(self.X, self.y)
 
         if self.type_of_classifier == "Random Forest":
@@ -231,6 +250,8 @@ class InsuranceClassifier:
         plt.show()
 
     def get_misclassified_g_status(self):
+        """Generate the plot statuses were predicted for the actual G clients.
+        """
         self.g_data = self.erasmus_db[self.erasmus_db[self.target_col] == "G"][[
             self.target_col, "predictions_defactor"]]
 
@@ -243,11 +264,25 @@ class InsuranceClassifier:
         plt.show()
 
     def get_missing_amounts(self):
+        """This function is used to calculate the potential costs which would 
+        occur with the created predictions. Created based on Achmeas suggestion.
+        """
         missed_amount = len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "A") & (self.erasmus_db["status"] == "S")]) * 100 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "P")]) * 1500 + len(
             self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "S") & (self.erasmus_db["status"] == "A")]) * 15000 + len(self.erasmus_db[(self.erasmus_db["predictions_defactor"] == "P") & (self.erasmus_db["status"] == "A")]) * 15000
         print(missed_amount)
 
     def minimize_function(self, estimator, X_test, y_test):
+        """This function is used as a loss function to choose the best 
+        hyperparameters for the model.
+
+        Args:
+            estimator (model): Created model
+            X_test (series): Pandas series with independent variable.
+            y_test (series): Pandas series with dependent variable.
+
+        Returns:
+            integer: the costs created.
+        """
         y_true = np.array(y_test)
         y_pred = estimator.predict(X_test)
 
@@ -263,29 +298,29 @@ class InsuranceClassifier:
         return -missed_amount
 
     def compare_with_high_low_predictions(self):
+        """This function shows the recall for high-low predictions of the model.
+        """
         comparison_table = self.erasmus_db[["status", "predictions_defactor"]]
-        comparison_table["old_predictions"] = self.prev_predictions
-
-        comparison_table["old_predictions_defactor"] = np.where(
-            comparison_table["old_predictions"] >= 0.5, 1, 0)
         comparison_table["new_predictions"] = np.where(
             comparison_table["predictions_defactor"] == "S", 0, 1)
         comparison_table["actual_status"] = np.where(
             comparison_table["status"] == "S", 0, 1)
 
-        old_recall = recall_score(
-            comparison_table["actual_status"], comparison_table["old_predictions_defactor"])
         new_recall = recall_score(
             comparison_table["actual_status"], comparison_table["new_predictions"])
 
         print(
-            f"The recall from old predictions - {old_recall}. New recall value - {new_recall}")
+            f"Recall from high-low binary predictions - {new_recall}")
 
     def save_predictions(self):
+        """This function saves predicted values and ids to the new excel file.
+        """
         predictions = pd.DataFrame()
         predictions["id"] = self.ids
         predictions["predictions"] = self.erasmus_db["predictions_defactor"]
         predictions.to_excel("predictions.xlsx")
 
     def save_the_model(self):
+        """This function saves the trained model for the future reuse. 
+        """
         joblib.dump(self.best_model, 'best_model.joblib')
