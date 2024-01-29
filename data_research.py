@@ -1,20 +1,9 @@
 import pandas as pd
 
-# pass as parameter what it is for
-
 
 def create_df(what_for="random_forest"):
     # Create the data frames
     erasmus_db = pd.read_csv("data/Erasmus.csv", sep=";")
-    mutation_log_db = pd.read_csv("data/Mutatielog_id.csv", sep=";")
-    toelichting_db = pd.read_excel("data/Toelichting.xlsx")
-
-    # Create new columns for date and time
-    mutation_log_db['DatumRegistratie'] = pd.to_datetime(
-        mutation_log_db['DatumRegistratie'])
-
-    mutation_log_db['date'] = mutation_log_db['DatumRegistratie'].dt.date
-    mutation_log_db['time'] = mutation_log_db['DatumRegistratie'].dt.time
 
     # Fix float values.
     for col in erasmus_db.columns:
@@ -62,15 +51,3 @@ def create_df(what_for="random_forest"):
                                  "age", "status", "LG1", "SF_woord_count"]]
 
     return erasmus_db
-
-
-"""
-# Since all the ids are assumed to be finished, we can just get the sum from min and max dates.
-id_diff = mutation_log_db.groupby("id")["DatumRegistratie"].agg(
-    lambda x: x.max() - x.min()).reset_index()
-id_diff["DatumRegistratie"]
-
-erasmus_db_with_time_diff = erasmus_db.merge(id_diff, on=["id"], how="left")
-
-erasmus_db.head(60).to_excel("resulting_tables/changed_erasmus2.xlsx")
-"""
