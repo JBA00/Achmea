@@ -61,7 +61,7 @@ class InsuranceClassifier:
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
             "old_predictions", axis=1)
 
-        # Factorization of target features from "S", "A" and "P" to 1, 2, 3.
+        # Factorization of target features from "S", "A" and "P" to 0, 1, 2.
         factor = pd.factorize(self.erasmus_db_for_training[self.target_col])
         self.erasmus_db_for_training[self.target_col] = factor[0]
         self.definitions = factor[1]
@@ -86,7 +86,7 @@ class InsuranceClassifier:
         self.boolean_features = self.X.select_dtypes(
             include=['bool']).columns.tolist()
 
-        # Numeric features are normalized, for categorical features dummy
+        # Numeric features are normalized. For categorical features, dummy
         # variables are generated. Boolean features are unchanged.
         self.preprocessor = ColumnTransformer(
             transformers=[
@@ -165,7 +165,7 @@ class InsuranceClassifier:
         self.erasmus_db['predictions_defactor'] = defactorized_column
 
     def load_the_model(self):
-        """If the previously trained saved in the repo, than it is used to 
+        """If the previously trained saved in the repository, than it is used to 
         generate predictions.
         """
         self.best_model = joblib.load("best_model.joblib")
@@ -178,8 +178,7 @@ class InsuranceClassifier:
         self.erasmus_db['predictions_defactor'] = defactorized_column
 
     def get_report(self):
-        """This function creates a report with detailed scoring values 
-        report.
+        """This function creates a report with detailed scoring values.
         """
         report = classification_report(self.y_test, self.predictions)
         print(
@@ -250,7 +249,7 @@ class InsuranceClassifier:
         plt.show()
 
     def get_misclassified_g_status(self):
-        """Generate the plot statuses were predicted for the actual G clients.
+        """Generate the plot with statuses that were predicted for the actual G clients.
         """
         self.g_data = self.erasmus_db[self.erasmus_db[self.target_col] == "G"][[
             self.target_col, "predictions_defactor"]]
