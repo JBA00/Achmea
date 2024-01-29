@@ -309,7 +309,7 @@ class InsuranceClassifier:
             comparison_table["actual_status"], comparison_table["new_predictions"])
 
         print(
-            f"Recall from high-low binary predictions - {new_recall}")
+            f"Overall recall from the model - {new_recall}")
 
     def save_predictions(self):
         """This function saves predicted values and ids to the new excel file.
