@@ -49,10 +49,6 @@ class InsuranceClassifier:
         self.erasmus_db = self.erasmus_db.drop("id", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
             "id", axis=1)
-        self.ids = self.erasmus_db["id"]
-        self.erasmus_db = self.erasmus_db.drop("id", axis=1)
-        self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
-            "id", axis=1)
         self.prev_predictions = self.erasmus_db["old_predictions"]
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
