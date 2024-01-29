@@ -18,6 +18,11 @@ import os
 
 
 class InsuranceClassifier:
+    """The class which allows to train the classifier using the best hyperparameters
+    using k-fold cross validation. Also, it has internal functions which generate
+    plots and reports to assess the quality of the model.
+    """
+
     def __init__(self, type_of_classifier, full_data, trainable_data, grid,
                  name_of_target_column="status", random_state=1810,
                  number_of_folds=10):
@@ -31,24 +36,23 @@ class InsuranceClassifier:
         self._initialization()
 
     def _initialization(self):
+        """This is the orchestration function which runs the processes of 
+        feature engineering, cross validation and training.
+        """
         self._prepare_variables()
         self._preprocess_data()
         self._cv_creation()
-        self._classify_random_forest()
-        if os.path.exists("best_model.joblib"):
-            self.load_the_model()
-        else:
-            self.choose_model_by_rule()
+        self._classify_model()
         if os.path.exists("best_model.joblib"):
             self.load_the_model()
         else:
             self.choose_model_by_rule()
 
     def _prepare_variables(self):
-        self.ids = self.erasmus_db["id"]
-        self.erasmus_db = self.erasmus_db.drop("id", axis=1)
-        self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
-            "id", axis=1)
+        """This function creates training and testing datasets.
+        """
+        # The id and old predictions columns are saved for a later use, but
+        # excluded from training and testing data sets.
         self.ids = self.erasmus_db["id"]
         self.erasmus_db = self.erasmus_db.drop("id", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
@@ -57,10 +61,14 @@ class InsuranceClassifier:
         self.erasmus_db = self.erasmus_db.drop("old_predictions", axis=1)
         self.erasmus_db_for_training = self.erasmus_db_for_training.drop(
             "old_predictions", axis=1)
+
+        # Factorization of target features from "S", "A" and "P" to 1, 2, 3.
         factor = pd.factorize(self.erasmus_db_for_training[self.target_col])
         self.erasmus_db_for_training[self.target_col] = factor[0]
         self.definitions = factor[1]
 
+        # Definition of dependent and independent variables and division into
+        # train-test datasets.
         self.X = self.erasmus_db_for_training.drop(self.target_col, axis=1)
         self.y = self.erasmus_db_for_training[self.target_col]
 
@@ -68,6 +76,8 @@ class InsuranceClassifier:
             self.X, self.y, test_size=0.25, random_state=self.random_state)
 
     def _preprocess_data(self):
+        """Preprocessing numeric, categorical and boolean features.
+        """
         self.numeric_features = self.X.select_dtypes(
             include=['int64', 'float64']).columns.tolist()
 
@@ -77,6 +87,8 @@ class InsuranceClassifier:
         self.boolean_features = self.X.select_dtypes(
             include=['bool']).columns.tolist()
 
+        # Numeric features are normalized, for categorical features dummy
+        # variables are generated. Boolean features are unchanged.
         self.preprocessor = ColumnTransformer(
             transformers=[
                 ('num', Pipeline(steps=[('imputer', SimpleImputer(
@@ -91,12 +103,17 @@ class InsuranceClassifier:
         )
 
     def _cv_creation(self):
-
+        """Definition of the cross validation.
+        """
         self.cv = StratifiedKFold(
             n_splits=self.number_of_folds, shuffle=True,
             random_state=self.random_state)
 
-    def _classify_random_forest(self):
+    def _classify_model(self):
+        """This function organizes a workflow of the classifier.
+        """
+
+        # Scorings used for tuning and assessment of the model.
         self.scoring = {
             'accuracy': make_scorer(accuracy_score),
             'precision': make_scorer(precision_score, average='weighted'),
@@ -105,6 +122,7 @@ class InsuranceClassifier:
             'costs': make_scorer(self.minimize_function, greater_is_better=True)
         }
 
+        # Creation of Random Forest/Lasso models.
         if self.type_of_classifier == "Random Forest":
             self.classifier = RandomForestClassifier(
                 n_estimators=400, random_state=self.random_state)
@@ -112,12 +130,12 @@ class InsuranceClassifier:
             self.classifier = LogisticRegression(multi_class='ovr',
                                                  penalty='l1', solver='saga')
 
+        # Pipeline definition. It was decided to under sample the model, because
+        # otherwise tuning process took unreasonable amount of time.
         self.model_pipeline = ImbPipeline([
             ('preprocessor', self.preprocessor),
-            # Adjust parameters as needed
             ('undersample', RandomUnderSampler(sampling_strategy='auto',
-                                               random_state=self.random_state)),  # Adjust parameters as needed,
-            # This will be replaced with the actual classifier during hyperparameter tuning
+                                               random_state=self.random_state)),
             ('classifier', self.classifier)
         ])
 
@@ -127,26 +145,10 @@ class InsuranceClassifier:
                                         cv=self.cv,
                                         refit='costs', verbose=2, n_jobs=-1)
 
-    def choose_model_by_rule(self):
-        # Get the results of the grid search
+    def _find_best(self):
+
         self.grid_search.fit(self.X_train, self.y_train)
-        cv_results = self.grid_search.cv_results_
-        # Find the index of the best model
-        best_index = np.argmax(cv_results['mean_test_score'])
-        # Calculate the standard error of the best model
-        best_std = cv_results['std_test_score'][best_index]
-        # Find models within one standard error of the best model
-        candidates = np.where(
-            (cv_results['mean_test_score'] >= cv_results['mean_test_score'][best_index] - best_std) &
-            (cv_results['mean_test_score'] <=
-             cv_results['mean_test_score'][best_index] + best_std)
-        )[0]
-        # Choose the simplest model among candidates
-        selected_index = candidates.max()
-        # Update the best model
-        self.best_model = self.grid_search.best_estimator_.set_params(
-            classifier__max_features=cv_results["param_classifier__max_features"][selected_index])
-        # Update predictions accordingly
+        self.best_model = self.grid_search.best_estimator_
         self.predictions = self.best_model.predict(self.X_test)
         self.predictions_full = self.best_model.predict(
             self.erasmus_db.drop("status", axis=1))
