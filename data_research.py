@@ -2,10 +2,10 @@ import pandas as pd
 
 
 def create_df(what_for="random_forest"):
-    """This function creates a dataset for the further analysis. It replaces
+    """This function creates a dataset for the remaining analysis. It replaces
     the values, changes the formats of the columns and drops the features
-    which can not be further used. For the further understanding of the logic
-    for the certain assumptions you can refer to the Technical Footnote.
+    which can not be further used. For further understanding of the logic
+    behind certain assumptions you can refer to the Technical Footnote.
 
     Args:
         what_for (str, optional): The parameter which defines the Machine 
@@ -42,7 +42,7 @@ def create_df(what_for="random_forest"):
     # It was discovered that the models used do not tolerate NaN values,
     # therefore those were filled in with certain values, taking into account
     # the specificity of the feature. Information regarding the assumptions made
-    # can also be found in the technical footnote.
+    # can also be found in the Technical Footnote.
     erasmus_db["SF_woord_count"].fillna(0, inplace=True)
 
     erasmus_db["woord_74"].fillna(0, inplace=True)
