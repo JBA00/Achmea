@@ -46,7 +46,7 @@ class InsuranceClassifier:
         if os.path.exists("best_model.joblib"):
             self.load_the_model()
         else:
-            self.choose_model_by_rule()
+            self._find_best()
 
     def _prepare_variables(self):
         """This function creates training and testing datasets.
