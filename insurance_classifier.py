@@ -253,13 +253,23 @@ class InsuranceClassifier:
         """
         self.g_data = self.erasmus_db[self.erasmus_db[self.target_col] == "G"][[
             self.target_col, "predictions_defactor"]]
-
+        
         plt.figure(figsize=(10, 6))
-        self.g_data["predictions_defactor"].value_counts().plot(
-            kind='bar', color='skyblue')
-        plt.title('Value Counts of predictions_defactor')
+  
+        # Calculate percentages
+        total = len(self.g_data)
+        percentages = self.g_data["predictions_defactor"].value_counts(normalize=True) * 100
+    
+        # Plot percentages
+        percentages.plot(kind='bar', color='skyblue')
+    
+        # Add percentage labels
+        for i, percentage in enumerate(percentages):
+            plt.text(i, percentage + 1, f'{percentage:.2f}%', ha='center')
+
+        plt.title('Pergentage of assigned categories for G customers')
         plt.xlabel('Categories')
-        plt.ylabel('Count')
+        plt.ylabel('Percentage')
         plt.show()
 
     def get_missing_amounts(self):
