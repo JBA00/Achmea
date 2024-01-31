@@ -243,7 +243,7 @@ class InsuranceClassifier:
         # Plot the top 10 features
         plt.figure(figsize=(10, 6))
         plt.barh(feature_importance_df['Feature'][:10],
-                 feature_importance_df['Importance'][:10])
+                 feature_importance_df['Importance'][:10], color ='#2d719c' )
         plt.xlabel('Feature Importance')
         plt.title('Top 10 Feature Importances')
         plt.show()
@@ -261,7 +261,7 @@ class InsuranceClassifier:
         percentages = self.g_data["predictions_defactor"].value_counts(normalize=True) * 100
     
         # Plot percentages
-        percentages.plot(kind='bar', color='skyblue')
+        percentages.plot(kind='bar', color='#2d719c')
     
         # Add percentage labels
         for i, percentage in enumerate(percentages):
